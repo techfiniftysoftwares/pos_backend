@@ -1,0 +1,581 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\SalePayment;
+use App\Models\HeldSale;
+use App\Models\Product;
+use App\Models\Stock;
+use App\Models\StockBatch;
+use App\Models\StockMovement;
+use App\Models\Payment;
+use App\Models\Customer;
+use App\Models\CustomerCreditTransaction;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+
+class SaleController extends Controller
+{
+    /**
+     * Display sales history with filtering
+     */
+    public function index(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 20);
+            $businessId = $request->input('business_id');
+            $branchId = $request->input('branch_id');
+            $customerId = $request->input('customer_id');
+            $status = $request->input('status');
+            $paymentType = $request->input('payment_type');
+            $dateFrom = $request->input('date_from');
+            $dateTo = $request->input('date_to');
+            $search = $request->input('search');
+
+            $query = Sale::query()
+                ->with(['customer', 'cashier', 'branch', 'items.product']);
+
+            if ($businessId) {
+                $query->where('business_id', $businessId);
+            }
+
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+
+            if ($customerId) {
+                $query->where('customer_id', $customerId);
+            }
+
+            if ($status) {
+                $query->where('status', $status);
+            }
+
+            if ($paymentType) {
+                $query->where('payment_type', $paymentType);
+            }
+
+            if ($dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
+            }
+
+            if ($search) {
+                $query->where('sale_number', 'like', "%{$search}%");
+            }
+
+            $sales = $query->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            return successResponse('Sales retrieved successfully', $sales);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve sales', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return queryErrorResponse('Failed to retrieve sales', $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculate totals before completing sale (preview)
+     */
+    public function calculateTotals(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.discount_amount' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|string|size:3',
+            'exchange_rate' => 'nullable|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        try {
+            $items = $request->items;
+            $subtotal = 0;
+            $totalTax = 0;
+            $totalDiscount = 0;
+            $itemsBreakdown = [];
+
+            foreach ($items as $item) {
+                $product = Product::findOrFail($item['product_id']);
+                $quantity = $item['quantity'];
+                $unitPrice = $product->selling_price;
+                $itemDiscount = $item['discount_amount'] ?? 0;
+
+                $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+                $taxRate = $product->tax_rate ?? 0;
+                $taxAmount = ($lineSubtotal * $taxRate) / 100;
+                $lineTotal = $lineSubtotal + $taxAmount;
+
+                $subtotal += $lineSubtotal;
+                $totalTax += $taxAmount;
+                $totalDiscount += $itemDiscount;
+
+                $itemsBreakdown[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'discount_amount' => $itemDiscount,
+                    'tax_rate' => $taxRate,
+                    'tax_amount' => round($taxAmount, 2),
+                    'line_total' => round($lineTotal, 2),
+                ];
+            }
+
+            $grandTotal = $subtotal + $totalTax;
+
+            $currency = $request->currency ?? 'USD';
+            $exchangeRate = $request->exchange_rate ?? 1.0;
+            $totalInBaseCurrency = $grandTotal * $exchangeRate;
+
+            return successResponse('Totals calculated successfully', [
+                'items' => $itemsBreakdown,
+                'subtotal' => round($subtotal, 2),
+                'tax_amount' => round($totalTax, 2),
+                'discount_amount' => round($totalDiscount, 2),
+                'total_amount' => round($grandTotal, 2),
+                'currency' => $currency,
+                'exchange_rate' => $exchangeRate,
+                'total_in_base_currency' => round($totalInBaseCurrency, 2),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to calculate totals', [
+                'error' => $e->getMessage(),
+            ]);
+            return serverErrorResponse('Failed to calculate totals', $e->getMessage());
+        }
+    }
+    /**
+ * Create new sale (complete transaction)
+ */
+public function store(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'business_id' => 'required|exists:businesses,id',
+        'branch_id' => 'required|exists:branches,id',
+        'customer_id' => 'nullable|exists:customers,id',
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.quantity' => 'required|numeric|min:0.01',
+        'items.*.discount_amount' => 'nullable|numeric|min:0',
+        'payment_type' => 'required|in:cash,credit,mixed',
+        'payments' => 'required_if:payment_type,cash,mixed|array',
+        'payments.*.payment_method_id' => 'required_with:payments|exists:payment_methods,id',
+        'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+        'payments.*.transaction_id' => 'nullable|string',
+        'currency' => 'nullable|string|size:3',
+        'exchange_rate' => 'nullable|numeric|min:0',
+        'notes' => 'nullable|string',
+    ]);
+
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // Check stock availability for all items first
+        foreach ($request->items as $item) {
+            $stock = Stock::where('product_id', $item['product_id'])
+                ->where('branch_id', $request->branch_id)
+                ->where('business_id', $request->business_id)
+                ->first();
+
+            if (!$stock || $stock->available_quantity < $item['quantity']) {
+                $product = Product::find($item['product_id']);
+                return errorResponse("Insufficient stock for {$product->name}. Available: " . ($stock->available_quantity ?? 0), 400);
+            }
+        }
+
+        // Calculate totals
+        $subtotal = 0;
+        $totalTax = 0;
+        $totalDiscount = 0;
+
+        foreach ($request->items as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            $quantity = $item['quantity'];
+            $unitPrice = $product->selling_price;
+            $itemDiscount = $item['discount_amount'] ?? 0;
+
+            $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+            $taxRate = $product->tax_rate ?? 0;
+            $taxAmount = ($lineSubtotal * $taxRate) / 100;
+
+            $subtotal += $lineSubtotal;
+            $totalTax += $taxAmount;
+            $totalDiscount += $itemDiscount;
+        }
+
+        $grandTotal = $subtotal + $totalTax;
+        $currency = $request->currency ?? 'USD';
+        $exchangeRate = $request->exchange_rate ?? 1.0;
+
+        // Credit sale validation
+        if ($request->payment_type === 'credit') {
+            if (!$request->customer_id) {
+                return errorResponse('Customer is required for credit sales', 400);
+            }
+
+            $customer = Customer::findOrFail($request->customer_id);
+            $availableCredit = $customer->credit_limit - $customer->current_credit_balance;
+
+            if ($grandTotal > $availableCredit) {
+                return errorResponse("Credit limit exceeded. Available credit: {$availableCredit}", 400);
+            }
+        }
+
+        // Create Sale
+        $sale = Sale::create([
+            'business_id' => $request->business_id,
+            'branch_id' => $request->branch_id,
+            'customer_id' => $request->customer_id,
+            'user_id' => Auth::id(),
+            'subtotal' => $subtotal,
+            'tax_amount' => $totalTax,
+            'discount_amount' => $totalDiscount,
+            'total_amount' => $grandTotal,
+            'currency' => $currency,
+            'exchange_rate' => $exchangeRate,
+            'status' => 'completed',
+            'payment_type' => $request->payment_type,
+            'payment_status' => $request->payment_type === 'credit' ? 'unpaid' : 'paid',
+            'is_credit_sale' => $request->payment_type === 'credit',
+            'notes' => $request->notes,
+            'completed_at' => now(),
+        ]);
+
+        // Create Sale Items and Deduct Stock Using FIFO
+        foreach ($request->items as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            $quantity = $item['quantity'];
+            $unitPrice = $product->selling_price;
+            $itemDiscount = $item['discount_amount'] ?? 0;
+
+            $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+            $taxRate = $product->tax_rate ?? 0;
+            $taxAmount = ($lineSubtotal * $taxRate) / 100;
+            $lineTotal = $lineSubtotal + $taxAmount;
+
+            // === FIFO BATCH DEDUCTION LOGIC ===
+            $stock = Stock::where('product_id', $product->id)
+                ->where('branch_id', $request->branch_id)
+                ->where('business_id', $request->business_id)
+                ->lockForUpdate()
+                ->first();
+
+            $previousQuantity = $stock->quantity;
+            $remainingToDeduct = $quantity;
+            $totalCostUsed = 0;
+
+            // Get available batches in FIFO order (oldest first)
+            $batches = StockBatch::where('stock_id', $stock->id)
+                ->where('quantity_remaining', '>', 0)
+                ->orderBy('received_date', 'asc')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($batches as $batch) {
+                if ($remainingToDeduct <= 0) {
+                    break;
+                }
+
+                $deductFromThisBatch = min($batch->quantity_remaining, $remainingToDeduct);
+
+                // Update batch remaining quantity
+                $batch->decrement('quantity_remaining', $deductFromThisBatch);
+
+                // Track cost from this batch
+                $totalCostUsed += $deductFromThisBatch * $batch->unit_cost;
+                $remainingToDeduct -= $deductFromThisBatch;
+            }
+
+            // Calculate weighted average cost used for this sale
+            $averageUnitCost = $quantity > 0 ? $totalCostUsed / $quantity : 0;
+
+            // Update total stock quantity
+            $newQuantity = $previousQuantity - $quantity;
+            $stock->update(['quantity' => $newQuantity]);
+
+            // Create SaleItem with cost basis
+            SaleItem::create([
+                'sale_id' => $sale->id,
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'unit_cost' => $averageUnitCost,  // ACTUAL cost used from batches
+                'tax_rate' => $taxRate,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $itemDiscount,
+                'line_total' => $lineTotal,
+            ]);
+
+            // Create Stock Movement
+            StockMovement::create([
+                'business_id' => $request->business_id,
+                'branch_id' => $request->branch_id,
+                'product_id' => $product->id,
+                'user_id' => Auth::id(),
+                'movement_type' => 'sale',
+                'quantity' => -$quantity,
+                'previous_quantity' => $previousQuantity,
+                'new_quantity' => $newQuantity,
+                'unit_cost' => $averageUnitCost,
+                'reference_type' => 'App\Models\Sale',
+                'reference_id' => $sale->id,
+                'notes' => "Sale: {$sale->sale_number}",
+            ]);
+        }
+
+        // Handle Payments
+        if ($request->payment_type === 'credit') {
+            // Create Customer Credit Transaction
+            CustomerCreditTransaction::create([
+                'customer_id' => $request->customer_id,
+                'transaction_type' => 'sale',
+                'amount' => $grandTotal,
+                'reference_number' => $sale->sale_number,
+                'processed_by' => Auth::id(),
+                'branch_id' => $request->branch_id,
+                'notes' => "Credit sale: {$sale->sale_number}",
+            ]);
+        } else {
+            // Create Payment records
+            foreach ($request->payments as $paymentData) {
+                $payment = Payment::create([
+                    'business_id' => $request->business_id,
+                    'branch_id' => $request->branch_id,
+                    'payment_method_id' => $paymentData['payment_method_id'],
+                    'customer_id' => $request->customer_id,
+                    'amount' => $paymentData['amount'],
+                    'currency' => $currency,
+                    'exchange_rate' => $exchangeRate,
+                    'status' => 'completed',
+                    'payment_type' => 'payment',
+                    'transaction_id' => $paymentData['transaction_id'] ?? null,
+                    'payment_date' => now(),
+                    'processed_by' => Auth::id(),
+                ]);
+
+                // Link Payment to Sale
+                SalePayment::create([
+                    'sale_id' => $sale->id,
+                    'payment_id' => $payment->id,
+                    'amount' => $paymentData['amount'],
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        $sale->load(['items.product', 'customer', 'cashier', 'branch', 'salePayments.payment']);
+
+        return successResponse('Sale completed successfully', $sale, 201);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Failed to create sale', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return serverErrorResponse('Failed to create sale', $e->getMessage());
+    }
+}
+    /**
+     * Display specific sale
+     */
+    public function show(Sale $sale)
+    {
+        try {
+            $sale->load([
+                'business',
+                'branch',
+                'customer',
+                'cashier',
+                'items.product',
+                'salePayments.payment.paymentMethod',
+                'return'
+            ]);
+
+            return successResponse('Sale retrieved successfully', $sale);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve sale', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage()
+            ]);
+            return queryErrorResponse('Failed to retrieve sale', $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel pending sale
+     */
+    public function cancel(Request $request, Sale $sale)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        try {
+            if (!$sale->canBeCancelled()) {
+                return errorResponse('Only pending sales can be cancelled', 400);
+            }
+
+            DB::beginTransaction();
+
+            // Restore stock for all items
+            foreach ($sale->items as $item) {
+                $stock = Stock::where('product_id', $item->product_id)
+                    ->where('branch_id', $sale->branch_id)
+                    ->where('business_id', $sale->business_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($stock) {
+                    $previousQuantity = $stock->quantity;
+                    $newQuantity = $previousQuantity + $item->quantity;
+
+                    $stock->update(['quantity' => $newQuantity]);
+
+                    // Create Stock Movement
+                    StockMovement::create([
+                        'business_id' => $sale->business_id,
+                        'branch_id' => $sale->branch_id,
+                        'product_id' => $item->product_id,
+                        'user_id' => Auth::id(),
+                        'movement_type' => 'adjustment',
+                        'quantity' => $item->quantity,
+                        'previous_quantity' => $previousQuantity,
+                        'new_quantity' => $newQuantity,
+                        'unit_cost' => $stock->unit_cost,
+                        'reference_type' => 'App\Models\Sale',
+                        'reference_id' => $sale->id,
+                        'notes' => "Sale cancelled: {$sale->sale_number}. Reason: {$request->reason}",
+                    ]);
+                }
+            }
+
+            $sale->update([
+                'status' => 'cancelled',
+                'notes' => ($sale->notes ?? '') . "\nCancelled: {$request->reason}",
+            ]);
+
+            DB::commit();
+
+            return successResponse('Sale cancelled successfully', $sale);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to cancel sale', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage()
+            ]);
+            return serverErrorResponse('Failed to cancel sale', $e->getMessage());
+        }
+    }
+
+    /**
+     * Hold/park incomplete sale
+     */
+    public function hold(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'business_id' => 'required|exists:businesses,id',
+            'branch_id' => 'required|exists:branches,id',
+            'sale_data' => 'required|array',
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        try {
+            $heldSale = HeldSale::create([
+                'business_id' => $request->business_id,
+                'branch_id' => $request->branch_id,
+                'user_id' => Auth::id(),
+                'sale_data' => $request->sale_data,
+                'notes' => $request->notes,
+            ]);
+
+            return successResponse('Sale held successfully', $heldSale, 201);
+        } catch (\Exception $e) {
+            Log::error('Failed to hold sale', [
+                'error' => $e->getMessage()
+            ]);
+            return serverErrorResponse('Failed to hold sale', $e->getMessage());
+        }
+    }
+
+    /**
+     * Get all held sales
+     */
+    public function getHeldSales(Request $request)
+    {
+        try {
+            $branchId = $request->input('branch_id');
+            $businessId = $request->input('business_id');
+
+            $query = HeldSale::with(['user', 'branch']);
+
+            if ($businessId) {
+                $query->where('business_id', $businessId);
+            }
+
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+
+            $heldSales = $query->orderBy('created_at', 'desc')->get();
+
+            return successResponse('Held sales retrieved successfully', $heldSales);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve held sales', [
+                'error' => $e->getMessage()
+            ]);
+            return queryErrorResponse('Failed to retrieve held sales', $e->getMessage());
+        }
+    }
+
+    /**
+     * Recall/resume held sale
+     */
+    public function recallHeld(HeldSale $heldSale)
+    {
+        try {
+            $saleData = $heldSale->sale_data;
+
+            $heldSale->delete();
+
+            return successResponse('Held sale recalled successfully', [
+                'sale_data' => $saleData,
+                'notes' => $heldSale->notes,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to recall held sale', [
+                'held_sale_id' => $heldSale->id,
+                'error' => $e->getMessage()
+            ]);
+            return serverErrorResponse('Failed to recall held sale', $e->getMessage());
+        }
+    }
+}

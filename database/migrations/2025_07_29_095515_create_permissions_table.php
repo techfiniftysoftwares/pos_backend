@@ -1,4 +1,4 @@
-<!-- < ?php
+<?php
 // database/migrations/2024_01_01_000002_create_permissions_table.php
 
 use Illuminate\Database\Migrations\Migration;
@@ -166,4 +166,4 @@ return new class extends Migration
             Permission::create($permissionData);
         }
     }
-}; -->
+};

@@ -1,4 +1,4 @@
-<!-- < ?php
+<?php
 // database/migrations/2024_01_01_000003_create_role_permission_table.php
 
 use Illuminate\Database\Migrations\Migration;
@@ -97,4 +97,4 @@ return new class extends Migration
         ])->pluck('id')->toArray();
         $customerServiceRole->permissions()->attach($customerServicePermissions);
     }
-}; -->
+};
