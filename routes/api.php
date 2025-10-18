@@ -37,6 +37,8 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\ExchangeRateSourceController;
 use App\Http\Controllers\Api\CurrencyController;
 use App\Http\Controllers\Api\ExchangeRateController;
+use App\Http\Controllers\Api\RevenueStreamController;
+use App\Http\Controllers\Api\RevenueEntryController;
 
 
 /*
@@ -222,30 +224,32 @@ Route::middleware(['auth:api'])->group(function () {
     Route::put('/{customerPoint}', [CustomerPointController::class, 'update']);
     Route::delete('/{customerPoint}', [CustomerPointController::class, 'destroy']);
     });
-    // gift card controller endpoints
-    Route::prefix('gift-cards')->group(function () {
-    Route::get('/', [GiftCardController::class, 'index']);
-    Route::post('/', [GiftCardController::class, 'store']);
-    Route::post('/check-balance', [GiftCardController::class, 'checkBalance']);
-    Route::post('/use', [GiftCardController::class, 'useCard']);
-    Route::post('/refund', [GiftCardController::class, 'refund']);
-    Route::get('/{giftCard}', [GiftCardController::class, 'show']);
-    Route::get('/{giftCard}/transactions', [GiftCardController::class, 'transactions']);
-    Route::put('/{giftCard}', [GiftCardController::class, 'update']);
-    Route::delete('/{giftCard}', [GiftCardController::class, 'destroy']);
-   });
-   Route::prefix('customer-segments')->group(function () {
-    Route::get('/', [CustomerSegmentController::class, 'index']);
-    Route::post('/', [CustomerSegmentController::class, 'store']);
-    Route::get('/{customerSegment}', [CustomerSegmentController::class, 'show']);
-    Route::get('/{customerSegment}/statistics', [CustomerSegmentController::class, 'statistics']);
-    Route::put('/{customerSegment}', [CustomerSegmentController::class, 'update']);
-    Route::delete('/{customerSegment}', [CustomerSegmentController::class, 'destroy']);
-    Route::post('/{customerSegment}/assign', [CustomerSegmentController::class, 'assignCustomer']);
-    Route::post('/{customerSegment}/remove', [CustomerSegmentController::class, 'removeCustomer']);
-    Route::post('/{customerSegment}/evaluate', [CustomerSegmentController::class, 'evaluateAndAssign']);
-    Route::patch('/{customerSegment}/toggle-status', [CustomerSegmentController::class, 'toggleStatus']);
-   });
+    // Customer Segments routes
+      Route::prefix('customers/segments')->group(function () {
+          Route::get('/', [CustomerSegmentController::class, 'index']);
+          Route::post('/', [CustomerSegmentController::class, 'store']);
+          Route::get('/{customerSegment}', [CustomerSegmentController::class, 'show']);
+          Route::put('/{customerSegment}', [CustomerSegmentController::class, 'update']);
+          Route::delete('/{customerSegment}', [CustomerSegmentController::class, 'destroy']);
+          Route::patch('/{customerSegment}/toggle-status', [CustomerSegmentController::class, 'toggleStatus']);
+          Route::post('/{customerSegment}/assign-customer', [CustomerSegmentController::class, 'assignCustomer']);
+          Route::post('/{customerSegment}/remove-customer', [CustomerSegmentController::class, 'removeCustomer']);
+          Route::post('/{customerSegment}/evaluate-and-assign', [CustomerSegmentController::class, 'evaluateAndAssign']);
+          Route::get('/{customerSegment}/statistics', [CustomerSegmentController::class, 'statistics']);
+      });
+      // gift card controller endpoints
+      Route::prefix('gift-cards')->group(function () {
+      Route::get('/', [GiftCardController::class, 'index']);
+      Route::post('/', [GiftCardController::class, 'store']);
+      Route::post('/check-balance', [GiftCardController::class, 'checkBalance']);
+      Route::post('/use', [GiftCardController::class, 'useCard']);
+      Route::post('/refund', [GiftCardController::class, 'refund']);
+      Route::get('/{giftCard}', [GiftCardController::class, 'show']);
+      Route::get('/{giftCard}/transactions', [GiftCardController::class, 'transactions']);
+      Route::put('/{giftCard}', [GiftCardController::class, 'update']);
+      Route::delete('/{giftCard}', [GiftCardController::class, 'destroy']);
+     });
+
    Route::prefix('payment-methods')->group(function () {
     Route::get('/', [PaymentMethodController::class, 'index']);
     Route::post('/', [PaymentMethodController::class, 'store']);
@@ -365,6 +369,27 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/{exchangeRate}', [ExchangeRateController::class, 'show']);
     Route::put('/{exchangeRate}', [ExchangeRateController::class, 'update']);
     Route::delete('/{exchangeRate}', [ExchangeRateController::class, 'destroy']);
+    });
+    // Revenue Streams Routes
+    Route::prefix('revenue-streams')->group(function () {
+        Route::get('/', [RevenueStreamController::class, 'index']);
+        Route::post('/', [RevenueStreamController::class, 'store']);
+        Route::get('/{revenueStream}', [RevenueStreamController::class, 'show']);
+        Route::put('/{revenueStream}', [RevenueStreamController::class, 'update']);
+        Route::delete('/{revenueStream}', [RevenueStreamController::class, 'destroy']);
+        Route::patch('/{revenueStream}/toggle-status', [RevenueStreamController::class, 'toggleStatus']);
+    });
+
+    // Revenue Entries Routes
+    Route::prefix('revenue-entries')->group(function () {
+        Route::get('/', [RevenueEntryController::class, 'index']);
+        Route::post('/', [RevenueEntryController::class, 'store']);
+        Route::get('/analytics', [RevenueEntryController::class, 'analytics']);
+        Route::get('/{revenueEntry}', [RevenueEntryController::class, 'show']);
+        Route::put('/{revenueEntry}', [RevenueEntryController::class, 'update']);
+        Route::delete('/{revenueEntry}', [RevenueEntryController::class, 'destroy']);
+        Route::patch('/{revenueEntry}/approve', [RevenueEntryController::class, 'approve']);
+        Route::patch('/{revenueEntry}/reject', [RevenueEntryController::class, 'reject']);
     });
 
 
