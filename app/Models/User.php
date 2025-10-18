@@ -101,6 +101,11 @@ class User extends Authenticatable implements OAuthenticatable
         }
     }
 
+    public function setPin(string $pin): void
+    {
+        $this->pin = $pin; // This will trigger the setPinAttribute mutator
+    }
+
     public function verifyPin(string $pin): bool
     {
         if ($this->isPinLocked()) {

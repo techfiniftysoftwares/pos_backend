@@ -61,6 +61,12 @@ class Customer extends Model
         return $this->hasMany(GiftCard::class);
     }
 
+    // Add segments relationship if you need customer segmentation
+    public function segments()
+    {
+        return $this->belongsToMany(CustomerSegment::class, 'customer_segment_assignments');
+    }
+
     // Helper Methods
     public function getCurrentPointsBalance()
     {

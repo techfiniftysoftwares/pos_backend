@@ -160,33 +160,57 @@ class UserController extends Controller
     }
 
 
-    public function show(User $user)
-    {
-        try {
-            $user->load([
-                'role',
-                'assignedSupportRequests',
-                'supportRequestUpdates'
-            ]);
+public function show(User $user)
+{
+    try {
+        // Load necessary relationships that exist in the User model
+        $user->load([
+            'role',
+            'business',
+            'primaryBranch',
+            'branches'
+        ]);
 
-            $userData = [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'is_active' => $user->is_active,
-                'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
-                'created_at' => $user->created_at->format('Y-m-d H:i:s'),
-                'role' => $user->role ? $user->role->only(['id', 'name']) : null,
-                'assigned_support_requests_count' => $user->assignedSupportRequests->count(),
-                'support_request_updates_count' => $user->supportRequestUpdates->count(),
-            ];
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'employee_id' => $user->employee_id,
+            'is_active' => $user->is_active,
+            'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
+            'created_at' => $user->created_at->format('Y-m-d H:i:s'),
+            'updated_at' => $user->updated_at->format('Y-m-d H:i:s'),
+            'role' => $user->role ? [
+                'id' => $user->role->id,
+                'name' => $user->role->name
+            ] : null,
+            'business' => $user->business ? [
+                'id' => $user->business->id,
+                'name' => $user->business->name
+            ] : null,
+            'primary_branch' => $user->primaryBranch ? [
+                'id' => $user->primaryBranch->id,
+                'name' => $user->primaryBranch->name,
+                'code' => $user->primaryBranch->code
+            ] : null,
+            'accessible_branches' => $user->branches->map(function($branch) {
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'code' => $branch->code
+                ];
+            }),
+            'pin_locked' => $user->isPinLocked(),
+            'failed_pin_attempts' => $user->failed_pin_attempts,
+            'pin_locked_until' => $user->pin_locked_until ? $user->pin_locked_until->format('Y-m-d H:i:s') : null,
+        ];
 
-            return successResponse('User retrieved successfully', $userData);
-        } catch (\Exception $e) {
-            return queryErrorResponse('An error occurred while retrieving user.', $e->getMessage());
-        }
+        return successResponse('User retrieved successfully', $userData);
+    } catch (\Exception $e) {
+        return queryErrorResponse('An error occurred while retrieving user.', $e->getMessage());
     }
+}
 
     public function getProfile(Request $request)
     {

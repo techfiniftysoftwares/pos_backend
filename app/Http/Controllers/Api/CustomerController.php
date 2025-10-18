@@ -105,70 +105,73 @@ class CustomerController extends Controller
     /**
      * Display the specified customer
      */
-    public function show(Customer $customer)
-    {
-        try {
-            $customer->load([
-                'business',
-                'creditTransactions' => function ($query) {
-                    $query->latest()->limit(10);
-                },
-                'points' => function ($query) {
-                    $query->latest()->limit(10);
-                },
-                'giftCards',
-                'segments'
-            ]);
+    /**
+ * Display the specified customer
+ */
+public function show(Customer $customer)
+{
+    try {
+        $customer->load([
+            'business',
+            'creditTransactions' => function ($query) {
+                $query->latest()->limit(10);
+            },
+            'points' => function ($query) {
+                $query->latest()->limit(10);
+            },
+            'giftCards'
+            // Removed 'segments' as it doesn't exist
+        ]);
 
-            $customerData = [
-                'id' => $customer->id,
-                'business_id' => $customer->business_id,
-                'customer_number' => $customer->customer_number,
-                'name' => $customer->name,
-                'email' => $customer->email,
-                'phone' => $customer->phone,
-                'secondary_phone' => $customer->secondary_phone,
-                'address' => $customer->address,
-                'city' => $customer->city,
-                'country' => $customer->country,
-                'customer_type' => $customer->customer_type,
-                'credit_limit' => $customer->credit_limit,
-                'current_credit_balance' => $customer->current_credit_balance,
-                'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
-                'is_active' => $customer->is_active,
-                'notes' => $customer->notes,
-                'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
-                'business' => $customer->business->only(['id', 'name']),
-                'points_balance' => $customer->getCurrentPointsBalance(),
-                'recent_credit_transactions' => $customer->creditTransactions->map(function ($transaction) {
-                    return [
-                        'id' => $transaction->id,
-                        'type' => $transaction->transaction_type,
-                        'amount' => $transaction->amount,
-                        'balance' => $transaction->new_balance,
-                        'reference' => $transaction->reference_number,
-                        'date' => $transaction->created_at->format('Y-m-d H:i:s')
-                    ];
-                }),
-                'recent_points' => $customer->points->map(function ($point) {
-                    return [
-                        'id' => $point->id,
-                        'type' => $point->transaction_type,
-                        'points' => $point->points,
-                        'balance' => $point->new_balance,
-                        'date' => $point->created_at->format('Y-m-d H:i:s')
-                    ];
-                }),
-                'gift_cards_count' => $customer->giftCards->count(),
-                'active_gift_cards' => $customer->giftCards->where('status', 'active')->count(),
-                'segments' => $customer->segments->pluck('name')
-            ];
+        $customerData = [
+            'id' => $customer->id,
+            'business_id' => $customer->business_id,
+            'customer_number' => $customer->customer_number,
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'secondary_phone' => $customer->secondary_phone,
+            'address' => $customer->address,
+            'city' => $customer->city,
+            'country' => $customer->country,
+            'customer_type' => $customer->customer_type,
+            'credit_limit' => $customer->credit_limit,
+            'current_credit_balance' => $customer->current_credit_balance,
+            'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
+            'is_active' => $customer->is_active,
+            'notes' => $customer->notes,
+            'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
+            'business' => $customer->business ? $customer->business->only(['id', 'name']) : null,
+            'points_balance' => $customer->getCurrentPointsBalance(),
+            'recent_credit_transactions' => $customer->creditTransactions->map(function ($transaction) {
+                return [
+                    'id' => $transaction->id,
+                    'type' => $transaction->transaction_type,
+                    'amount' => $transaction->amount,
+                    'balance' => $transaction->new_balance,
+                    'reference' => $transaction->reference_number,
+                    'date' => $transaction->created_at->format('Y-m-d H:i:s')
+                ];
+            }),
+            'recent_points' => $customer->points->map(function ($point) {
+                return [
+                    'id' => $point->id,
+                    'type' => $point->transaction_type,
+                    'points' => $point->points,
+                    'balance' => $point->new_balance,
+                    'date' => $point->created_at->format('Y-m-d H:i:s')
+                ];
+            }),
+            'gift_cards_count' => $customer->giftCards->count(),
+            'active_gift_cards' => $customer->giftCards->where('status', 'active')->count(),
+            // Removed segments data since relationship doesn't exist
+        ];
 
-            return successResponse('Customer retrieved successfully', $customerData);
-        } catch (\Exception $e) {
-            return queryErrorResponse('Failed to retrieve customer', $e->getMessage());
-        }
+        return successResponse('Customer retrieved successfully', $customerData);
+    } catch (\Exception $e) {
+        return queryErrorResponse('Failed to retrieve customer', $e->getMessage());
     }
+}
 
     /**
      * Update the specified customer

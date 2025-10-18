@@ -121,7 +121,7 @@ class AuthController extends Controller
             $user->role_id = $request->input('role_id');
             $user->business_id = $request->input('business_id');
             $user->primary_branch_id = $request->input('primary_branch_id');
-            $user->setPin($request->input('pin')); // Will be hashed by mutator
+            $user->pin = $request->input('pin');// Will be hashed by mutator
             $user->employee_id = $employeeId;
             $user->is_active = $request->input('is_active', true);
             $user->save();
