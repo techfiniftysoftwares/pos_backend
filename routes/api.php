@@ -190,17 +190,6 @@ Route::middleware(['auth:api'])->group(function () {
         Route::delete('/{storageLocation}', [StorageLocationController::class, 'destroy']);
         Route::patch('/{storageLocation}/toggle-status', [StorageLocationController::class, 'toggleStatus']);
     });
-    // Customer Management routes
-    Route::prefix('customers')->group(function () {
-        Route::get('/', [CustomerController::class, 'index']);
-        Route::post('/', [CustomerController::class, 'store']);
-        Route::get('/search', [CustomerController::class, 'search']);
-        Route::get('/statistics', [CustomerController::class, 'statistics']);
-        Route::get('/{customer}', [CustomerController::class, 'show']);
-        Route::put('/{customer}', [CustomerController::class, 'update']);
-        Route::delete('/{customer}', [CustomerController::class, 'destroy']);
-        Route::patch('/{customer}/toggle-status', [CustomerController::class, 'toggleStatus']);
-    });
     // customer credit routes
     Route::prefix('customers/credit')->group(function () {
     Route::get('/', [CustomerCreditController::class, 'index']);
@@ -237,7 +226,18 @@ Route::middleware(['auth:api'])->group(function () {
           Route::post('/{customerSegment}/evaluate-and-assign', [CustomerSegmentController::class, 'evaluateAndAssign']);
           Route::get('/{customerSegment}/statistics', [CustomerSegmentController::class, 'statistics']);
       });
-      // gift card controller endpoints
+       // Customer Management routes
+       Route::prefix('customers')->group(function () {
+           Route::get('/', [CustomerController::class, 'index']);
+           Route::post('/', [CustomerController::class, 'store']);
+           Route::get('/search', [CustomerController::class, 'search']);
+           Route::get('/statistics', [CustomerController::class, 'statistics']);
+           Route::get('/{customer}', [CustomerController::class, 'show']);
+           Route::put('/{customer}', [CustomerController::class, 'update']);
+           Route::delete('/{customer}', [CustomerController::class, 'destroy']);
+           Route::patch('/{customer}/toggle-status', [CustomerController::class, 'toggleStatus']);
+       });
+         // gift card controller endpoints
       Route::prefix('gift-cards')->group(function () {
       Route::get('/', [GiftCardController::class, 'index']);
       Route::post('/', [GiftCardController::class, 'store']);
