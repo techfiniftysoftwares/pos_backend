@@ -81,106 +81,121 @@ class PurchaseController extends Controller
     /**
      * Create new purchase order
      */
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'business_id' => 'required|exists:businesses,id',
-            'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_date' => 'required|date',
-            'expected_delivery_date' => 'nullable|date|after_or_equal:purchase_date',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_cost' => 'required|numeric|min:0',
-            'items.*.tax_rate' => 'nullable|numeric|min:0|max:100',
-            'currency' => 'nullable|string|size:3',
-            'exchange_rate' => 'nullable|numeric|min:0',
-            'status' => 'sometimes|in:draft,ordered',
-            'invoice_number' => 'nullable|string',
-            'notes' => 'nullable|string',
+    /**
+ * Create new purchase order
+ */
+public function store(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'business_id' => 'required|exists:businesses,id',
+        'branch_id' => 'required|exists:branches,id',
+        'supplier_id' => 'required|exists:suppliers,id',
+        'purchase_date' => 'required|date',
+        'expected_delivery_date' => 'nullable|date|after_or_equal:purchase_date',
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.quantity' => 'required|numeric|min:0.01',
+        'items.*.unit_cost' => 'required|numeric|min:0',
+        'items.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+        'currency' => 'nullable|string|size:3',
+        'exchange_rate' => 'nullable|numeric|min:0',
+        'status' => 'sometimes|in:draft,ordered',
+        'invoice_number' => 'nullable|string',
+        'notes' => 'nullable|string',
+    ]);
+
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // Generate unique purchase number
+        $dateStr = date('Ymd', strtotime($request->purchase_date));
+        $count = Purchase::where('business_id', $request->business_id)
+            ->whereDate('purchase_date', $request->purchase_date)
+            ->count();
+
+        do {
+            $count++;
+            $purchaseNumber = 'PO-' . $dateStr . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+        } while (Purchase::where('purchase_number', $purchaseNumber)->exists());
+
+        // Calculate totals
+        $subtotal = 0;
+        $totalTax = 0;
+
+        foreach ($request->items as $item) {
+            $quantity = $item['quantity'];
+            $unitCost = $item['unit_cost'];
+            $taxRate = $item['tax_rate'] ?? 0;
+
+            $lineSubtotal = $unitCost * $quantity;
+            $lineTax = ($lineSubtotal * $taxRate) / 100;
+
+            $subtotal += $lineSubtotal;
+            $totalTax += $lineTax;
+        }
+
+        $grandTotal = $subtotal + $totalTax;
+        $currency = $request->currency ?? 'USD';
+        $exchangeRate = $request->exchange_rate ?? 1.0;
+
+        // Create Purchase
+        $purchase = Purchase::create([
+            'business_id' => $request->business_id,
+            'branch_id' => $request->branch_id,
+            'supplier_id' => $request->supplier_id,
+            'purchase_number' => $purchaseNumber,
+            'purchase_date' => $request->purchase_date,
+            'expected_delivery_date' => $request->expected_delivery_date,
+            'subtotal' => $subtotal,
+            'tax_amount' => $totalTax,
+            'total_amount' => $grandTotal,
+            'currency' => $currency,
+            'exchange_rate' => $exchangeRate,
+            'status' => $request->status ?? 'draft',
+            'invoice_number' => $request->invoice_number,
+            'notes' => $request->notes,
+            'created_by' => Auth::id(),
         ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
+        // Create Purchase Items
+        foreach ($request->items as $item) {
+            $quantity = $item['quantity'];
+            $unitCost = $item['unit_cost'];
+            $taxRate = $item['tax_rate'] ?? 0;
+
+            $lineSubtotal = $unitCost * $quantity;
+            $lineTax = ($lineSubtotal * $taxRate) / 100;
+            $lineTotal = $lineSubtotal + $lineTax;
+
+            PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'product_id' => $item['product_id'],
+                'quantity_ordered' => $quantity,
+                'unit_cost' => $unitCost,
+                'tax_rate' => $taxRate,
+                'tax_amount' => $lineTax,
+                'line_total' => $lineTotal,
+                'notes' => $item['notes'] ?? null,
+            ]);
         }
 
-        try {
-            DB::beginTransaction();
+        DB::commit();
 
-            // Calculate totals
-            $subtotal = 0;
-            $totalTax = 0;
+        $purchase->load(['supplier', 'branch', 'items.product', 'createdBy']);
 
-            foreach ($request->items as $item) {
-                $quantity = $item['quantity'];
-                $unitCost = $item['unit_cost'];
-                $taxRate = $item['tax_rate'] ?? 0;
-
-                $lineSubtotal = $unitCost * $quantity;
-                $lineTax = ($lineSubtotal * $taxRate) / 100;
-
-                $subtotal += $lineSubtotal;
-                $totalTax += $lineTax;
-            }
-
-            $grandTotal = $subtotal + $totalTax;
-            $currency = $request->currency ?? 'USD';
-            $exchangeRate = $request->exchange_rate ?? 1.0;
-
-            // Create Purchase
-            $purchase = Purchase::create([
-                'business_id' => $request->business_id,
-                'branch_id' => $request->branch_id,
-                'supplier_id' => $request->supplier_id,
-                'purchase_date' => $request->purchase_date,
-                'expected_delivery_date' => $request->expected_delivery_date,
-                'subtotal' => $subtotal,
-                'tax_amount' => $totalTax,
-                'total_amount' => $grandTotal,
-                'currency' => $currency,
-                'exchange_rate' => $exchangeRate,
-                'status' => $request->status ?? 'draft',
-                'invoice_number' => $request->invoice_number,
-                'notes' => $request->notes,
-                'created_by' => Auth::id(),
-            ]);
-
-            // Create Purchase Items
-            foreach ($request->items as $item) {
-                $quantity = $item['quantity'];
-                $unitCost = $item['unit_cost'];
-                $taxRate = $item['tax_rate'] ?? 0;
-
-                $lineSubtotal = $unitCost * $quantity;
-                $lineTax = ($lineSubtotal * $taxRate) / 100;
-                $lineTotal = $lineSubtotal + $lineTax;
-
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'product_id' => $item['product_id'],
-                    'quantity_ordered' => $quantity,
-                    'unit_cost' => $unitCost,
-                    'tax_rate' => $taxRate,
-                    'tax_amount' => $lineTax,
-                    'line_total' => $lineTotal,
-                    'notes' => $item['notes'] ?? null,
-                ]);
-            }
-
-            DB::commit();
-
-            $purchase->load(['supplier', 'branch', 'items.product', 'createdBy']);
-
-            return successResponse('Purchase order created successfully', $purchase, 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to create purchase', [
-                'error' => $e->getMessage()
-            ]);
-            return serverErrorResponse('Failed to create purchase', $e->getMessage());
-        }
+        return successResponse('Purchase order created successfully', $purchase, 201);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Failed to create purchase', [
+            'error' => $e->getMessage()
+        ]);
+        return serverErrorResponse('Failed to create purchase', $e->getMessage());
     }
+}
 
     /**
      * Display specific purchase order
@@ -531,4 +546,5 @@ class PurchaseController extends Controller
             return queryErrorResponse('Failed to retrieve supplier purchases', $e->getMessage());
         }
     }
+
 }
