@@ -65,10 +65,17 @@ class Product extends Model
     }
 
     // Will add later when Stock model exists
-    // public function stocks()
-    // {
-    //     return $this->hasMany(Stock::class);
-    // }
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class);
+    }
+    /**
+ * Get stock for specific branch
+ */
+public function stockAtBranch($branchId)
+{
+    return $this->hasOne(Stock::class)->where('branch_id', $branchId);
+}
 
     // Scopes
     public function scopeActive($query)

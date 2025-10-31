@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\CurrencyController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\RevenueStreamController;
 use App\Http\Controllers\Api\RevenueEntryController;
+use App\Http\Controllers\Api\AdminDashboardController;
 
 
 /*
@@ -391,6 +392,9 @@ Route::middleware(['auth:api'])->group(function () {
         Route::patch('/{revenueEntry}/approve', [RevenueEntryController::class, 'approve']);
         Route::patch('/{revenueEntry}/reject', [RevenueEntryController::class, 'reject']);
     });
+     Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
+    Route::get('/admin-dashboard/user-growth-trend', [AdminDashboardController::class, 'getUserGrowthTrend']);
+    Route::get('/admin-dashboard/users-by-role', [AdminDashboardController::class, 'getUsersByRole']);
 
 
 });
