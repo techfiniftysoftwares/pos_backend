@@ -51,6 +51,13 @@ class Stock extends Model
         return $this->hasMany(StockMovement::class, 'product_id', 'product_id')
                     ->where('branch_id', $this->branch_id);
     }
+    /**
+ * Get all batches for this stock (for FIFO tracking)
+ */
+public function batches()
+{
+    return $this->hasMany(StockBatch::class);
+}
 
     // Scopes
     public function scopeForBusiness($query, $businessId)
