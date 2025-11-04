@@ -40,6 +40,8 @@ use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\RevenueStreamController;
 use App\Http\Controllers\Api\RevenueEntryController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\SalesDashboardController;
+
 
 
 /*
@@ -392,9 +394,27 @@ Route::middleware(['auth:api'])->group(function () {
         Route::patch('/{revenueEntry}/approve', [RevenueEntryController::class, 'approve']);
         Route::patch('/{revenueEntry}/reject', [RevenueEntryController::class, 'reject']);
     });
-     Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
+    Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
     Route::get('/admin-dashboard/user-growth-trend', [AdminDashboardController::class, 'getUserGrowthTrend']);
     Route::get('/admin-dashboard/users-by-role', [AdminDashboardController::class, 'getUsersByRole']);
+    Route::get('/admin-dashboard/user-summary', [AdminDashboardController::class, 'getUserSummary']);
+    Route::get('/admin-dashboard/user-login-activity', [AdminDashboardController::class, 'getUserLoginActivity']);
+    Route::get('/admin-dashboard/inactive-users', [AdminDashboardController::class, 'getInactiveUsers']);
+    Route::get('/admin-dashboard/recent-registrations', [AdminDashboardController::class, 'getRecentRegistrations']);
+    Route::get('/admin-dashboard/business-summary', [AdminDashboardController::class, 'getBusinessSummary']);
+    Route::get('/admin-dashboard/branch-distribution', [AdminDashboardController::class, 'getBranchDistribution']);
+    Route::get('/admin-dashboard/business-performance', [AdminDashboardController::class, 'getBusinessPerformance']);
+    Route::get('/admin-dashboard/branch-details', [AdminDashboardController::class, 'getBranchDetails']);
+    Route::get('/admin-dashboard/security-summary', [AdminDashboardController::class, 'getSecuritySummary']);
+    Route::get('/admin-dashboard/locked-users', [AdminDashboardController::class, 'getLockedUsers']);
+    Route::get('/admin-dashboard/failed-login-attempts', [AdminDashboardController::class, 'getFailedLoginAttempts']);
+    Route::get('/admin-dashboard/role-distribution', [AdminDashboardController::class, 'getRoleDistribution']);
+    Route::get('/admin-dashboard/security-events', [AdminDashboardController::class, 'getSecurityEvents']);
+    // Sales Dashboard Routes
+    Route::get('/sales-dashboard/sales-summary', [SalesDashboardController::class, 'getSalesSummary']);
+    Route::get('/sales-dashboard/sales-comparison', [SalesDashboardController::class, 'getSalesComparison']);
+    Route::get('/sales-dashboard/top-selling-products', [SalesDashboardController::class, 'getTopSellingProducts']);
+    Route::get('/sales-dashboard/sales-by-payment-method', [SalesDashboardController::class, 'getSalesByPaymentMethod']);
 
 
 });
