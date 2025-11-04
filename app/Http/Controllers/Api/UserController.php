@@ -211,72 +211,186 @@ public function show(User $user)
         return queryErrorResponse('An error occurred while retrieving user.', $e->getMessage());
     }
 }
+/**
+ * Get user details for editing with assigned and available branches
+ */
+public function edit(User $user)
+{
+    try {
+        // Load user relationships
+        $user->load(['role', 'business', 'primaryBranch', 'branches']);
 
-    public function getProfile(Request $request)
-    {
-        try {
-            $user = $request->user()->load(['role']);
+        // Get assigned branch IDs
+        $assignedBranchIds = $user->branches->pluck('id')->toArray();
 
-            if ($user->role) {
-                // Get user permissions through role
-                $activePermissions = DB::table('role_permission')
-                    ->join('permissions', 'role_permission.permission_id', '=', 'permissions.id')
-                    ->join('modules', 'permissions.module_id', '=', 'modules.id')
-                    ->join('submodules', 'permissions.submodule_id', '=', 'submodules.id')
-                    ->where('role_permission.role_id', $user->role->id)
-                    ->where('modules.is_active', 1)
-                    ->where('submodules.is_active', 1)
-                    ->select([
-                        'permissions.id',
-                        'permissions.module_id',
-                        'permissions.submodule_id',
-                        'permissions.action',
-                        'modules.name as module_name',
-                        'submodules.title as submodule_title'
-                    ])
-                    ->get();
+        // Get assigned branches with details
+        $assignedBranches = $user->branches->map(function($branch) use ($user) {
+            return [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'code' => $branch->code,
+                'phone' => $branch->phone,
+                'address' => $branch->address,
+                'is_primary' => $user->primary_branch_id === $branch->id
+            ];
+        });
 
-                // Transform to the expected format
-                $filteredPermissions = $activePermissions->map(function($perm) {
-                    return [
-                        'module' => $perm->module_name,
-                        'submodule' => $perm->submodule_title,
-                        'action' => $perm->action
-                    ];
-                });
-
-                // Create user data array
-                $userData = [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'is_active' => $user->is_active,
-                    'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
-                    'role' => $user->role ? $user->role->only(['id', 'name']) : null,
-                    'permissions' => $filteredPermissions
+        // Get available (unassigned) branches for this business
+        $availableBranches = \App\Models\Branch::where('business_id', $user->business_id)
+            ->where('is_active', true)
+            ->whereNotIn('id', $assignedBranchIds)
+            ->get()
+            ->map(function($branch) {
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'code' => $branch->code,
+                    'phone' => $branch->phone,
+                    'address' => $branch->address
                 ];
+            });
 
-                return successResponse('User profile retrieved successfully', $userData);
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'employee_id' => $user->employee_id,
+            'is_active' => $user->is_active,
+            'role_id' => $user->role_id,
+            'business_id' => $user->business_id,
+            'primary_branch_id' => $user->primary_branch_id,
+            'role' => $user->role ? [
+                'id' => $user->role->id,
+                'name' => $user->role->name
+            ] : null,
+            'business' => $user->business ? [
+                'id' => $user->business->id,
+                'name' => $user->business->name
+            ] : null,
+            'primary_branch' => $user->primaryBranch ? [
+                'id' => $user->primaryBranch->id,
+                'name' => $user->primaryBranch->name,
+                'code' => $user->primaryBranch->code
+            ] : null,
+            'assigned_branches' => $assignedBranches,
+            'available_branches' => $availableBranches
+        ];
+
+        return successResponse('User details retrieved successfully', $userData);
+    } catch (\Exception $e) {
+        return queryErrorResponse('An error occurred while retrieving user details.', $e->getMessage());
+    }
+}
+/**
+ * Update user specifics including role, status, and branch assignments
+ */
+public function updateUserSpecifics(Request $request, User $user)
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $user->id,
+            'phone' => 'sometimes|string|max:20',
+            'role_id' => 'sometimes|exists:roles,id',
+            'primary_branch_id' => 'sometimes|exists:branches,id',
+            'branch_ids' => 'sometimes|array',
+            'branch_ids.*' => 'exists:branches,id',
+            'is_active' => 'sometimes|boolean',
+            'password' => 'sometimes|string|min:8',
+            'password_confirmation' => 'sometimes|required_with:password|same:password',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        $validated = $validator->validated();
+
+        DB::beginTransaction();
+
+        try {
+            // Validate primary branch belongs to user's business
+            if (isset($validated['primary_branch_id'])) {
+                $primaryBranch = \App\Models\Branch::find($validated['primary_branch_id']);
+                if ($primaryBranch->business_id !== $user->business_id) {
+                    return errorResponse('Primary branch must belong to user\'s business', 400);
+                }
             }
 
-            return successResponse('User profile retrieved successfully', [
+            // Validate all branch_ids belong to user's business
+            if (isset($validated['branch_ids'])) {
+                $branches = \App\Models\Branch::whereIn('id', $validated['branch_ids'])->get();
+
+                foreach ($branches as $branch) {
+                    if ($branch->business_id !== $user->business_id) {
+                        return errorResponse('All branches must belong to user\'s business', 400);
+                    }
+                }
+            }
+
+            // Handle user deactivation and token deletion
+            if (
+                isset($validated['is_active']) &&
+                $validated['is_active'] === false &&
+                $user->is_active !== false
+            ) {
+                $user->tokens()->delete();
+            }
+
+            // Update user details
+            $userUpdateData = collect($validated)
+                ->except(['password', 'password_confirmation', 'branch_ids'])
+                ->filter()
+                ->toArray();
+
+            if (isset($validated['password'])) {
+                $userUpdateData['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($userUpdateData);
+
+            // Update branch assignments
+            if (isset($validated['branch_ids'])) {
+                // Sync branches (removes old, adds new)
+                $user->branches()->sync($validated['branch_ids']);
+            }
+
+            DB::commit();
+
+            // Reload user with relationships
+            $user->load(['role', 'business', 'primaryBranch', 'branches']);
+
+            return updatedResponse([
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'employee_id' => $user->employee_id,
                 'is_active' => $user->is_active,
-                'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
                 'role' => $user->role ? $user->role->only(['id', 'name']) : null,
-            ]);
-
+                'business' => $user->business ? $user->business->only(['id', 'name']) : null,
+                'primary_branch' => $user->primaryBranch ? [
+                    'id' => $user->primaryBranch->id,
+                    'name' => $user->primaryBranch->name,
+                    'code' => $user->primaryBranch->code
+                ] : null,
+                'accessible_branches' => $user->branches->map(function($branch) {
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'code' => $branch->code
+                    ];
+                })
+            ], 'User details updated successfully');
         } catch (\Exception $e) {
-            return queryErrorResponse(
-                'An error occurred while retrieving user profile.',
-                $e->getMessage()
-            );
+            DB::rollBack();
+            throw $e;
         }
+    } catch (\Exception $e) {
+        return queryErrorResponse('An error occurred while updating user details.', $e->getMessage());
     }
+}
 
     public function updateProfile(Request $request)
     {
@@ -307,68 +421,6 @@ public function show(User $user)
             return queryErrorResponse('An error occurred while updating user profile.', $e->getMessage());
         }
     }
-
-    /**
-     * Update user specifics including role and status
-     */
-    public function updateUserSpecifics(Request $request, User $user)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|string|max:255',
-                'email' => 'sometimes|string|email|unique:users,email,' . $user->id,
-                'phone' => 'sometimes|string|max:20',
-                'role_id' => 'sometimes|exists:roles,id',
-                'is_active' => 'sometimes|boolean',
-                'password' => 'sometimes|string|min:8',
-                'password_confirmation' => 'sometimes|required_with:password|same:password',
-            ]);
-
-            if ($validator->fails()) {
-                return validationErrorResponse($validator->errors());
-            }
-
-            $validated = $validator->validated();
-
-            DB::beginTransaction();
-
-            try {
-                // Handle user deactivation and token deletion
-                if (
-                    isset($validated['is_active']) &&
-                    $validated['is_active'] === false &&
-                    $user->is_active !== false
-                ) {
-                    $user->tokens()->delete();
-                }
-
-                // Update user details
-                $userUpdateData = collect($validated)
-                    ->except(['password', 'password_confirmation'])
-                    ->filter()
-                    ->toArray();
-
-                if (isset($validated['password'])) {
-                    $userUpdateData['password'] = Hash::make($validated['password']);
-                }
-
-                $user->update($userUpdateData);
-
-                DB::commit();
-
-                // Reload user with relationships
-                $user->load(['role']);
-
-                return updatedResponse($user, 'User details updated successfully');
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
-        } catch (\Exception $e) {
-            return queryErrorResponse('An error occurred while updating user details.', $e->getMessage());
-        }
-    }
-
     public function destroy(User $user)
     {
         try {

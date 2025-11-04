@@ -26,53 +26,81 @@ class SalesSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->command->info('Seeding sales...');
+        $this->command->info('🚀 Starting Sales Seeding...');
+        $this->command->newLine();
 
         $business = Business::first();
         $branch = Branch::where('business_id', $business->id)->first();
         $user = User::where('business_id', $business->id)->first();
 
         if (!$business || !$branch || !$user) {
-            $this->command->error('Missing business, branch, or user. Run previous seeders first.');
+            $this->command->error('❌ Missing business, branch, or user. Run previous seeders first.');
             return;
         }
 
         // Get all available data
         $customers = Customer::where('business_id', $business->id)->get();
-        $paymentMethods = PaymentMethod::where('business_id', $business->id)->where('is_active', true)->get();
+        $paymentMethods = PaymentMethod::where('business_id', $business->id)
+            ->where('is_active', true)
+            ->get();
 
         // Get products that have stock at this branch
         $productsWithStock = Stock::where('business_id', $business->id)
             ->where('branch_id', $branch->id)
-            ->where('quantity', '>', 0)
+            ->where('quantity', '>', 5) // Only products with at least 5 units
             ->with('product')
             ->get()
             ->pluck('product')
-            ->filter(); // Remove nulls
+            ->filter();
 
         if ($customers->isEmpty() || $paymentMethods->isEmpty() || $productsWithStock->isEmpty()) {
-            $this->command->error('Missing customers, payment methods, or products with stock.');
+            $this->command->error('❌ Missing customers, payment methods, or products with stock.');
+            $this->command->info('Available customers: ' . $customers->count());
+            $this->command->info('Available payment methods: ' . $paymentMethods->count());
+            $this->command->info('Available products with stock: ' . $productsWithStock->count());
             return;
         }
 
+        $this->command->info('📊 Found:');
+        $this->command->info("   - Customers: {$customers->count()}");
+        $this->command->info("   - Payment Methods: {$paymentMethods->count()}");
+        $this->command->info("   - Products with Stock: {$productsWithStock->count()}");
+        $this->command->newLine();
+
         $salesCount = 0;
-        $numberOfSales = 30; // Create 30 sales
+        $failedCount = 0;
+        $numberOfSales = 100; // Create 100 sales
+
+        // Date distribution: Last 90 days with focus on recent dates
+        $today = Carbon::parse('2025-11-04'); // Current date as per your requirement
+
+        $this->command->info('📅 Generating sales from ' . $today->copy()->subDays(90)->format('Y-m-d') . ' to ' . $today->format('Y-m-d'));
+        $this->command->newLine();
+
+        $progressBar = $this->command->getOutput()->createProgressBar($numberOfSales);
+        $progressBar->start();
 
         for ($i = 1; $i <= $numberOfSales; $i++) {
             try {
                 DB::beginTransaction();
 
-                // Random date in the last 30 days
-                $saleDate = Carbon::now()->subDays(rand(0, 30))->setTime(rand(8, 20), rand(0, 59));
+                // Weighted date distribution (more recent sales)
+                $daysAgo = $this->getWeightedRandomDays();
+                $saleDate = $today->copy()->subDays($daysAgo)->setTime(rand(8, 20), rand(0, 59), rand(0, 59));
 
-                // Random customer (or walk-in)
-                $customer = rand(1, 10) > 3 ? $customers->random() : $customers->where('name', 'Walk-in Customer')->first();
+                // Random customer (70% existing customers, 30% walk-in)
+                $useWalkIn = rand(1, 10) > 7;
+                $customer = $useWalkIn
+                    ? $customers->where('name', 'Walk-in Customer')->first() ?? $customers->random()
+                    : $customers->random();
 
-                // Random payment type
-                $paymentType = rand(1, 10) > 8 ? 'credit' : 'cash';
+                // Payment type distribution: 85% cash, 15% credit
+                $paymentType = rand(1, 100) > 85 ? 'credit' : 'cash';
 
-                // Select 1-5 random products for this sale
-                $saleProducts = $productsWithStock->random(rand(1, min(5, $productsWithStock->count())));
+                // Select 1-4 random products for this sale
+                $numProducts = $this->getWeightedProductCount();
+                $availableProducts = $productsWithStock->shuffle();
+                $saleProducts = $availableProducts->take(min($numProducts, $availableProducts->count()));
 
                 $subtotal = 0;
                 $totalTax = 0;
@@ -81,7 +109,8 @@ class SalesSeeder extends Seeder
 
                 // Calculate totals and prepare sale items
                 foreach ($saleProducts as $product) {
-                    $quantity = rand(1, 3); // Reduce to 1-3 to avoid running out of stock
+                    // Weighted quantity: more 1-2 items, fewer bulk purchases
+                    $quantity = $this->getWeightedQuantity();
 
                     // Get stock for this product at this branch
                     $stock = Stock::where('business_id', $business->id)
@@ -95,7 +124,9 @@ class SalesSeeder extends Seeder
                     }
 
                     $unitPrice = $product->selling_price;
-                    $itemDiscount = rand(0, 10) > 7 ? rand(50, 500) : 0; // Random discount sometimes
+
+                    // 20% chance of discount
+                    $itemDiscount = rand(1, 100) <= 20 ? rand(10, min(100, $unitPrice * 0.15)) : 0;
 
                     $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
                     $taxRate = $product->tax_rate ?? 0;
@@ -121,6 +152,8 @@ class SalesSeeder extends Seeder
                 // Skip if no valid items
                 if (empty($saleItemsData)) {
                     DB::rollBack();
+                    $failedCount++;
+                    $progressBar->advance();
                     continue;
                 }
 
@@ -145,11 +178,11 @@ class SalesSeeder extends Seeder
                 $sale->payment_type = $paymentType;
                 $sale->payment_status = $paymentType === 'credit' ? 'unpaid' : 'paid';
                 $sale->is_credit_sale = $paymentType === 'credit';
-                $sale->notes = 'Seeded sale transaction';
+                $sale->notes = 'Seeded sale transaction #' . ($i);
                 $sale->completed_at = $saleDate;
                 $sale->created_at = $saleDate;
                 $sale->updated_at = $saleDate;
-                $sale->sale_number = $saleNumber; // Set custom sale number
+                $sale->sale_number = $saleNumber;
                 $sale->save();
 
                 // Create Sale Items and Deduct Stock using FIFO
@@ -217,8 +250,8 @@ class SalesSeeder extends Seeder
 
                 // Create Payments (if not credit)
                 if ($paymentType !== 'credit') {
-                    // Randomly choose 1 or 2 payment methods
-                    $numPayments = rand(1, 2);
+                    // 80% single payment, 20% split payment
+                    $numPayments = rand(1, 100) > 80 ? 2 : 1;
                     $remainingAmount = $grandTotal;
 
                     for ($p = 0; $p < $numPayments; $p++) {
@@ -228,8 +261,8 @@ class SalesSeeder extends Seeder
                         if ($p === $numPayments - 1) {
                             $paymentAmount = $remainingAmount;
                         } else {
-                            $maxSplit = $remainingAmount > 2000 ? $remainingAmount * 0.7 : $remainingAmount - 100;
-                            $paymentAmount = rand(100, $maxSplit);
+                            $splitPercentage = rand(40, 70) / 100;
+                            $paymentAmount = round($remainingAmount * $splitPercentage, 2);
                         }
 
                         $payment = Payment::create([
@@ -262,20 +295,29 @@ class SalesSeeder extends Seeder
 
                 DB::commit();
                 $salesCount++;
-                $this->command->info("✓ Created sale #{$salesCount}: {$sale->sale_number} - KES " . number_format($grandTotal, 2));
+                $progressBar->advance();
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                $this->command->error("✗ Failed to create sale #{$i}: " . $e->getMessage());
+                $failedCount++;
+                $progressBar->advance();
             }
         }
 
-        $this->command->newLine();
+        $progressBar->finish();
+        $this->command->newLine(2);
+
+        // Summary
         $this->command->info('========================================');
-        $this->command->info('  Sales Seeding Complete!');
+        $this->command->info('  ✅ Sales Seeding Complete!');
         $this->command->info('========================================');
         $this->command->info("  Total Sales Created: {$salesCount}");
+        $this->command->info("  Failed Attempts: {$failedCount}");
+        $this->command->info("  Success Rate: " . round(($salesCount / $numberOfSales) * 100, 2) . "%");
         $this->command->newLine();
+
+        // Show date distribution
+        $this->showDateDistribution($today);
     }
 
     /**
@@ -297,5 +339,77 @@ class SalesSeeder extends Seeder
         } while (Sale::where('sale_number', $saleNumber)->exists());
 
         return $saleNumber;
+    }
+
+    /**
+     * Get weighted random days (more recent = higher probability)
+     */
+    private function getWeightedRandomDays()
+    {
+        $rand = rand(1, 100);
+
+        if ($rand <= 30) return rand(0, 7);      // 30% - Last week
+        if ($rand <= 50) return rand(8, 14);     // 20% - 1-2 weeks ago
+        if ($rand <= 70) return rand(15, 30);    // 20% - 2-4 weeks ago
+        if ($rand <= 85) return rand(31, 60);    // 15% - 1-2 months ago
+        return rand(61, 90);                      // 15% - 2-3 months ago
+    }
+
+    /**
+     * Get weighted product count (realistic cart sizes)
+     */
+    private function getWeightedProductCount()
+    {
+        $rand = rand(1, 100);
+
+        if ($rand <= 40) return 1;  // 40% - Single item
+        if ($rand <= 70) return 2;  // 30% - Two items
+        if ($rand <= 90) return 3;  // 20% - Three items
+        return 4;                    // 10% - Four items
+    }
+
+    /**
+     * Get weighted quantity (realistic purchase amounts)
+     */
+    private function getWeightedQuantity()
+    {
+        $rand = rand(1, 100);
+
+        if ($rand <= 50) return 1;      // 50% - Single unit
+        if ($rand <= 75) return 2;      // 25% - Two units
+        if ($rand <= 90) return 3;      // 15% - Three units
+        return rand(4, 5);               // 10% - 4-5 units
+    }
+
+    /**
+     * Show date distribution of created sales
+     */
+    private function showDateDistribution($today)
+    {
+        $this->command->info('📊 Sales Distribution:');
+        $this->command->newLine();
+
+        $ranges = [
+            ['name' => 'Today', 'days' => 0],
+            ['name' => 'Last 7 Days', 'days' => 7],
+            ['name' => 'Last 30 Days', 'days' => 30],
+            ['name' => 'Last 60 Days', 'days' => 60],
+            ['name' => 'Last 90 Days', 'days' => 90],
+        ];
+
+        foreach ($ranges as $range) {
+            $startDate = $today->copy()->subDays($range['days']);
+            $count = Sale::whereDate('completed_at', '>=', $startDate->toDateString())
+                ->whereDate('completed_at', '<=', $today->toDateString())
+                ->count();
+
+            $totalAmount = Sale::whereDate('completed_at', '>=', $startDate->toDateString())
+                ->whereDate('completed_at', '<=', $today->toDateString())
+                ->sum('total_amount');
+
+            $this->command->info("  {$range['name']}: {$count} sales (KES " . number_format($totalAmount, 2) . ")");
+        }
+
+        $this->command->newLine();
     }
 }

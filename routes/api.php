@@ -79,6 +79,7 @@ Route::middleware(['auth:api'])->group(function () {
     // user routes
     Route::apiResource('users', UserController::class)->only(['index', 'show', 'destroy']);
     Route::get('user/profile', [UserController::class, 'getProfile']);
+    Route::get('users/{user}/edit', [UserController::class, 'edit']);
     Route::put('user/profile', [UserController::class, 'updateProfile']);
     Route::put('users/{user}/edit', [UserController::class, 'updateUserSpecifics']);
     Route::put('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
@@ -415,6 +416,21 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/sales-dashboard/sales-comparison', [SalesDashboardController::class, 'getSalesComparison']);
     Route::get('/sales-dashboard/top-selling-products', [SalesDashboardController::class, 'getTopSellingProducts']);
     Route::get('/sales-dashboard/sales-by-payment-method', [SalesDashboardController::class, 'getSalesByPaymentMethod']);
+    // Tab 2: Sales Performance Routes
+    Route::get('/sales-dashboard/sales-growth-trend', [SalesDashboardController::class, 'getSalesGrowthTrend']);
+    Route::get('/sales-dashboard/peak-sales-hours', [SalesDashboardController::class, 'getPeakSalesHours']);
+    Route::get('/sales-dashboard/cashier-performance', [SalesDashboardController::class, 'getCashierPerformance']);
+    Route::get('/sales-dashboard/sales-by-category', [SalesDashboardController::class, 'getSalesByCategory']);
+    Route::get('/sales-dashboard/product-summary', [SalesDashboardController::class, 'getProductSummary']);
+    Route::get('/sales-dashboard/product-performance', [SalesDashboardController::class, 'getProductPerformance']);
+    Route::get('/sales-dashboard/low-stock-alerts', [SalesDashboardController::class, 'getLowStockAlerts']);
+    Route::get('/sales-dashboard/slow-moving-products', [SalesDashboardController::class, 'getSlowMovingProducts']);
+    Route::get('/sales-dashboard/category-performance', [SalesDashboardController::class, 'getCategoryPerformance']);
+    // Tab 4: Payment & Transaction Analysis Routes
+    Route::get('/sales-dashboard/payment-method-analytics', [SalesDashboardController::class, 'getPaymentMethodAnalytics']);
+    Route::get('/sales-dashboard/return-refund-summary', [SalesDashboardController::class, 'getReturnRefundSummary']);
+    Route::get('/sales-dashboard/discount-usage-summary', [SalesDashboardController::class, 'getDiscountUsageSummary']);
+    Route::get('/sales-dashboard/credit-sales-summary', [SalesDashboardController::class, 'getCreditSalesSummary']);
 
 
 });
