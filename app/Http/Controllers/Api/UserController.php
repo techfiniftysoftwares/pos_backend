@@ -212,7 +212,7 @@ public function show(User $user)
     }
 }
 /**
- * Get user details for editing with assigned and available branches
+ * Get user details for editing with available branches
  */
 public function edit(User $user)
 {
@@ -220,33 +220,17 @@ public function edit(User $user)
         // Load user relationships
         $user->load(['role', 'business', 'primaryBranch', 'branches']);
 
-        // Get assigned branch IDs
-        $assignedBranchIds = $user->branches->pluck('id')->toArray();
-
-        // Get assigned branches with details
-        $assignedBranches = $user->branches->map(function($branch) use ($user) {
-            return [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'code' => $branch->code,
-                'phone' => $branch->phone,
-                'address' => $branch->address,
-                'is_primary' => $user->primary_branch_id === $branch->id
-            ];
-        });
-
-        // Get available (unassigned) branches for this business
+        // Get all branches for the user's business
         $availableBranches = \App\Models\Branch::where('business_id', $user->business_id)
             ->where('is_active', true)
-            ->whereNotIn('id', $assignedBranchIds)
             ->get()
-            ->map(function($branch) {
+            ->map(function($branch) use ($user) {
                 return [
                     'id' => $branch->id,
                     'name' => $branch->name,
                     'code' => $branch->code,
-                    'phone' => $branch->phone,
-                    'address' => $branch->address
+                    'is_assigned' => $user->branches->contains('id', $branch->id),
+                    'is_primary' => $user->primary_branch_id === $branch->id
                 ];
             });
 
@@ -273,7 +257,7 @@ public function edit(User $user)
                 'name' => $user->primaryBranch->name,
                 'code' => $user->primaryBranch->code
             ] : null,
-            'assigned_branches' => $assignedBranches,
+            'assigned_branch_ids' => $user->branches->pluck('id')->toArray(),
             'available_branches' => $availableBranches
         ];
 
@@ -392,6 +376,99 @@ public function updateUserSpecifics(Request $request, User $user)
     }
 }
 
+public function getProfile(Request $request)
+{
+    try {
+        $user = $request->user()->load(['role', 'business', 'primaryBranch', 'branches']);
+
+        if ($user->role) {
+            // Get user permissions through role
+            $activePermissions = DB::table('role_permission')
+                ->join('permissions', 'role_permission.permission_id', '=', 'permissions.id')
+                ->join('modules', 'permissions.module_id', '=', 'modules.id')
+                ->join('submodules', 'permissions.submodule_id', '=', 'submodules.id')
+                ->where('role_permission.role_id', $user->role->id)
+                ->where('modules.is_active', 1)
+                ->where('submodules.is_active', 1)
+                ->select([
+                    'permissions.id',
+                    'permissions.module_id',
+                    'permissions.submodule_id',
+                    'permissions.action',
+                    'modules.name as module_name',
+                    'submodules.title as submodule_title'
+                ])
+                ->get();
+
+            // Transform to the expected format
+            $filteredPermissions = $activePermissions->map(function($perm) {
+                return [
+                    'module' => $perm->module_name,
+                    'submodule' => $perm->submodule_title,
+                    'action' => $perm->action
+                ];
+            });
+
+            // Create user data array
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'employee_id' => $user->employee_id,
+                'is_active' => $user->is_active,
+                'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
+                'role' => $user->role ? $user->role->only(['id', 'name']) : null,
+                'business' => $user->business ? $user->business->only(['id', 'name']) : null,
+                'primary_branch' => $user->primaryBranch ? [
+                    'id' => $user->primaryBranch->id,
+                    'name' => $user->primaryBranch->name,
+                    'code' => $user->primaryBranch->code
+                ] : null,
+                'accessible_branches' => $user->branches->map(function($branch) {
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'code' => $branch->code
+                    ];
+                }),
+                'permissions' => $filteredPermissions
+            ];
+
+            return successResponse('User profile retrieved successfully', $userData);
+        }
+
+        return successResponse('User profile retrieved successfully', [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'employee_id' => $user->employee_id,
+            'is_active' => $user->is_active,
+            'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
+            'role' => $user->role ? $user->role->only(['id', 'name']) : null,
+            'business' => $user->business ? $user->business->only(['id', 'name']) : null,
+            'primary_branch' => $user->primaryBranch ? [
+                'id' => $user->primaryBranch->id,
+                'name' => $user->primaryBranch->name,
+                'code' => $user->primaryBranch->code
+            ] : null,
+            'accessible_branches' => $user->branches->map(function($branch) {
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'code' => $branch->code
+                ];
+            }),
+        ]);
+
+    } catch (\Exception $e) {
+        return queryErrorResponse(
+            'An error occurred while retrieving user profile.',
+            $e->getMessage()
+        );
+    }
+}
     public function updateProfile(Request $request)
     {
         try {
