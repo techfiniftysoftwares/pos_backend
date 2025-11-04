@@ -267,6 +267,75 @@ public function edit(User $user)
     }
 }
 /**
+ * Update user's primary branch
+ * POST /user/update-primary-branch
+ *
+ * Request body:
+ * {
+ *     "branch_id": "2"
+ * }
+ */
+public function updatePrimaryBranch(Request $request)
+{
+    try {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'branch_id' => 'required|exists:branches,id'
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        $branchId = $request->input('branch_id');
+
+        // Check if the branch belongs to the user's business
+        $branch = \App\Models\Branch::find($branchId);
+
+        if (!$branch) {
+            return errorResponse('Branch not found', 404);
+        }
+
+        if ($branch->business_id !== $user->business_id) {
+            return errorResponse('You can only set branches from your business as primary branch', 403);
+        }
+
+        // Check if the branch is in user's accessible branches
+        $hasAccess = $user->branches()->where('branches.id', $branchId)->exists();
+
+        if (!$hasAccess) {
+            return errorResponse('You can only set accessible branches as primary branch', 403);
+        }
+
+        // Update primary branch
+        $user->update(['primary_branch_id' => $branchId]);
+
+        // Reload user with relationships
+        $user->load(['role', 'business', 'primaryBranch', 'branches']);
+
+        return successResponse('Primary branch updated successfully', [
+            'id' => $user->id,
+            'name' => $user->name,
+            'primary_branch' => [
+                'id' => $user->primaryBranch->id,
+                'name' => $user->primaryBranch->name,
+                'code' => $user->primaryBranch->code
+            ],
+            'accessible_branches' => $user->branches->map(function($branch) {
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'code' => $branch->code
+                ];
+            })
+        ]);
+
+    } catch (\Exception $e) {
+        return queryErrorResponse('An error occurred while updating primary branch.', $e->getMessage());
+    }
+}
+/**
  * Update user specifics including role, status, and branch assignments
  */
 public function updateUserSpecifics(Request $request, User $user)

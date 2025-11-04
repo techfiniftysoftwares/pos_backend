@@ -83,6 +83,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::put('user/profile', [UserController::class, 'updateProfile']);
     Route::put('users/{user}/edit', [UserController::class, 'updateUserSpecifics']);
     Route::put('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+    Route::post('users/update-primary-branch', [UserController::class, 'updatePrimaryBranch']);
 
 
     Route::apiResource('/roles', RoleController::class);
