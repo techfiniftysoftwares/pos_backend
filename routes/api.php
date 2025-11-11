@@ -41,6 +41,12 @@ use App\Http\Controllers\Api\RevenueStreamController;
 use App\Http\Controllers\Api\RevenueEntryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\SalesDashboardController;
+use App\Http\Controllers\Api\SalesPdfReportController;
+use App\Http\Controllers\Api\StockPdfReportController;
+use App\Http\Controllers\Api\CustomerCreditPdfReportController;
+use App\Http\Controllers\Api\PaymentPdfReportController;
+use App\Http\Controllers\Api\RevenueStreamPdfReportController;
+use App\Http\Controllers\Api\InventoryStockPdfReportController;
 
 
 
@@ -432,6 +438,45 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/sales-dashboard/return-refund-summary', [SalesDashboardController::class, 'getReturnRefundSummary']);
     Route::get('/sales-dashboard/discount-usage-summary', [SalesDashboardController::class, 'getDiscountUsageSummary']);
     Route::get('/sales-dashboard/credit-sales-summary', [SalesDashboardController::class, 'getCreditSalesSummary']);
+    // PDF REPORTS - SALES
+    Route::prefix('pdf-reports/sales')->group(function () {
+        Route::post('/daily-sales-report', [SalesPdfReportController::class, 'generateDailySalesReport']);
+        Route::post('/sales-summary-report', [SalesPdfReportController::class, 'generateSalesSummaryReport']);
+    });
+
+    // PDF REPORTS - STOCK
+    Route::prefix('pdf-reports/stock')->group(function () {
+        Route::post('/stock-level-report', [StockPdfReportController::class, 'generateStockLevelReport']);
+        Route::post('/stock-summary-report', [StockPdfReportController::class, 'generateStockSummaryReport']);
+        Route::post('/stock-movement-report', [StockPdfReportController::class, 'generateStockMovementReport']);
+    });
+  // PDF REPORTS - CUSTOMER CREDIT
+    Route::prefix('pdf-reports/customer-credit')->group(function () {
+        Route::post('/customer-debt-report', [CustomerCreditPdfReportController::class, 'generateCustomerDebtReport']);
+        Route::post('/credit-aging-report', [CustomerCreditPdfReportController::class, 'generateCreditAgingReport']);
+        Route::post('/all-customers-debt-report', [CustomerCreditPdfReportController::class, 'generateAllCustomersDebtReport']); // NEW
+        Route::post('/outstanding-credits-report', [CustomerCreditPdfReportController::class, 'generateOutstandingCreditsReport']);
+    });
+    Route::prefix('pdf-reports/payments')->group(function () {
+    Route::post('/payment-method-report', [PaymentPdfReportController::class, 'generatePaymentMethodReport']);
+    Route::post('/payment-reconciliation-report', [PaymentPdfReportController::class, 'generatePaymentReconciliationReport']);
+    Route::post('/cash-reconciliation-report', [PaymentPdfReportController::class, 'generateCashReconciliationReport']);
+
+    });
+    // PDF REPORTS - CASH MANAGEMENT
+    Route::prefix('pdf-reports/cash-management')->group(function () {
+        Route::post('/cash-register-session-report', [PaymentPdfReportController::class, 'generateCashRegisterSessionReport']);
+        Route::post('/cash-movement-summary-report', [PaymentPdfReportController::class, 'generateCashMovementSummaryReport']);
+    });
+    Route::prefix('pdf-reports/revenue-streams')->group(function () {
+    Route::post('/revenue-stream-report', [RevenueStreamPdfReportController::class, 'generateRevenueStreamReport']);
+    Route::post('/revenue-stream-summary', [RevenueStreamPdfReportController::class, 'generateRevenueStreamSummaryReport']);
+    });
+    Route::prefix('pdf-reports/inventory-stock')->group(function () {
+    Route::post('/inventory-valuation-report', [InventoryStockPdfReportController::class, 'generateInventoryValuationReport']);
+    Route::post('/stock-adjustment-report', [InventoryStockPdfReportController::class, 'generateStockAdjustmentReport']);
+    Route::post('/stock-transfer-report', [InventoryStockPdfReportController::class, 'generateStockTransferReport']);
+});
 
 
 });
