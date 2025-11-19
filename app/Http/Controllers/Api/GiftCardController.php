@@ -211,114 +211,113 @@ class GiftCardController extends Controller
         }
     }
 
-    /**
-     * Check gift card balance
-     */
-    public function checkBalance(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'card_number' => 'required|string|exists:gift_cards,card_number',
-            'pin' => 'nullable|string',
-        ]);
+   public function checkBalance(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'card_number' => 'required|string|exists:gift_cards,card_number',
+        'pin' => 'nullable|string',
+    ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
-        }
-
-        try {
-            $giftCard = GiftCard::where('card_number', $request->card_number)->first();
-
-            // Verify PIN if card has one
-            if ($giftCard->pin && $request->pin) {
-                if (!$giftCard->verifyPin($request->pin)) {
-                    return errorResponse('Invalid PIN', 401);
-                }
-            } elseif ($giftCard->pin && !$request->pin) {
-                return errorResponse('PIN required', 401);
-            }
-
-            return successResponse('Balance retrieved successfully', [
-                'card_number' => $giftCard->card_number,
-                'current_balance' => $giftCard->current_balance,
-                'status' => $giftCard->status,
-                'is_expired' => $giftCard->isExpired(),
-                'expires_at' => $giftCard->expires_at?->format('Y-m-d'),
-            ]);
-        } catch (\Exception $e) {
-            return serverErrorResponse('Failed to check balance', $e->getMessage());
-        }
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
     }
 
-    /**
-     * Use gift card (deduct amount)
-     */
-    public function useCard(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'card_number' => 'required|string|exists:gift_cards,card_number',
-            'amount' => 'required|numeric|min:0.01',
-            'pin' => 'nullable|string',
-            'reference_number' => 'nullable|string',
-            'branch_id' => 'required|exists:branches,id',
-        ]);
+    try {
+        $giftCard = GiftCard::where('card_number', $request->card_number)->first();
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
+        // Verify PIN if card has one
+        if ($giftCard->pin && $request->pin) {
+            if (!$giftCard->verifyPin($request->pin)) {
+                return errorResponse('Invalid PIN', 422); // Changed from 401 to 422
+            }
+        } elseif ($giftCard->pin && !$request->pin) {
+            return errorResponse('PIN required', 422); // Changed from 401 to 422
         }
 
-        try {
-            DB::beginTransaction();
+        return successResponse('Balance retrieved successfully', [
+            'card_number' => $giftCard->card_number,
+            'current_balance' => $giftCard->current_balance,
+            'status' => $giftCard->status,
+            'is_expired' => $giftCard->isExpired(),
+            'expires_at' => $giftCard->expires_at?->format('Y-m-d'),
+        ]);
+    } catch (\Exception $e) {
+        return serverErrorResponse('Failed to check balance', $e->getMessage());
+    }
+}
+  /**
+ * Use gift card (deduct amount)
+ */
+public function useCard(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'card_number' => 'required|string|exists:gift_cards,card_number',
+        'amount' => 'required|numeric|min:0.01',
+        'pin' => 'nullable|string',
+        'reference_number' => 'nullable|string',
+        'branch_id' => 'required|exists:branches,id',
+    ]);
 
-            $giftCard = GiftCard::where('card_number', $request->card_number)
-                ->lockForUpdate()
-                ->first();
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
+    }
 
-            // Verify PIN if required
-            if ($giftCard->pin && $request->pin) {
-                if (!$giftCard->verifyPin($request->pin)) {
-                    return errorResponse('Invalid PIN', 401);
-                }
-            } elseif ($giftCard->pin && !$request->pin) {
-                return errorResponse('PIN required', 401);
+    try {
+        DB::beginTransaction();
+
+        $giftCard = GiftCard::where('card_number', $request->card_number)
+            ->lockForUpdate()
+            ->first();
+
+        // Verify PIN if required
+        if ($giftCard->pin && $request->pin) {
+            if (!$giftCard->verifyPin($request->pin)) {
+                DB::rollBack();
+                return errorResponse('Invalid PIN', 422); // Changed from 401 to 422
             }
-
-            // Check if card is active and has balance
-            if (!$giftCard->hasBalance($request->amount)) {
-                return errorResponse('Insufficient balance or card inactive', 400);
-            }
-
-            // Check expiration
-            if ($giftCard->isExpired()) {
-                $giftCard->update(['status' => 'expired']);
-                return errorResponse('Gift card has expired', 400);
-            }
-
-            // Create transaction
-            GiftCardTransaction::create([
-                'gift_card_id' => $giftCard->id,
-                'transaction_type' => 'used',
-                'amount' => $request->amount,
-                'reference_number' => $request->reference_number,
-                'processed_by' => Auth::id(),
-                'branch_id' => $request->branch_id,
-            ]);
-
-            DB::commit();
-
-            $giftCard->refresh();
-
-            return successResponse('Gift card used successfully', [
-                'card_number' => $giftCard->card_number,
-                'amount_used' => $request->amount,
-                'remaining_balance' => $giftCard->current_balance,
-                'status' => $giftCard->status,
-            ]);
-        } catch (\Exception $e) {
+        } elseif ($giftCard->pin && !$request->pin) {
             DB::rollBack();
-            return serverErrorResponse('Failed to use gift card', $e->getMessage());
+            return errorResponse('PIN required', 422); // Changed from 401 to 422
         }
-    }
 
+        // Check if card is active and has balance
+        if (!$giftCard->hasBalance($request->amount)) {
+            DB::rollBack();
+            return errorResponse('Insufficient balance or card inactive', 400);
+        }
+
+        // Check expiration
+        if ($giftCard->isExpired()) {
+            $giftCard->update(['status' => 'expired']);
+            DB::rollBack();
+            return errorResponse('Gift card has expired', 400);
+        }
+
+        // Create transaction
+        GiftCardTransaction::create([
+            'gift_card_id' => $giftCard->id,
+            'transaction_type' => 'used',
+            'amount' => $request->amount,
+            'reference_number' => $request->reference_number,
+            'processed_by' => Auth::id(),
+            'branch_id' => $request->branch_id,
+        ]);
+
+        DB::commit();
+
+        $giftCard->refresh();
+
+        return successResponse('Gift card used successfully', [
+            'card_number' => $giftCard->card_number,
+            'amount_used' => $request->amount,
+            'remaining_balance' => $giftCard->current_balance,
+            'status' => $giftCard->status,
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return serverErrorResponse('Failed to use gift card', $e->getMessage());
+    }
+}
     /**
      * Refund to gift card
      */
