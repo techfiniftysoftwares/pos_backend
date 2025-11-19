@@ -335,6 +335,74 @@ public function updatePrimaryBranch(Request $request)
         return queryErrorResponse('An error occurred while updating primary branch.', $e->getMessage());
     }
 }
+public function store(Request $request)
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users',
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'role_id' => 'required|exists:roles,id',
+            'business_id' => 'required|exists:businesses,id',
+            'primary_branch_id' => 'required|exists:branches,id',
+            'employee_id' => 'sometimes|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        DB::beginTransaction();
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'role_id' => $request->role_id,
+            'business_id' => $request->business_id,
+            'primary_branch_id' => $request->primary_branch_id,
+            'employee_id' => $request->employee_id,
+            'is_active' => true,
+        ]);
+
+        // Assign branches if provided
+        if ($request->has('branch_ids')) {
+            $user->branches()->sync($request->branch_ids);
+        }
+
+        DB::commit();
+
+        return createdResponse($user, 'User created successfully');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return queryErrorResponse('An error occurred while creating user.', $e->getMessage());
+    }
+}
+public function update(Request $request, User $user)
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $user->id,
+            'phone' => 'sometimes|string|max:20',
+            'employee_id' => 'sometimes|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        $user->update($request->only(['name', 'email', 'phone', 'employee_id']));
+
+        return updatedResponse($user, 'User updated successfully');
+
+    } catch (\Exception $e) {
+        return queryErrorResponse('An error occurred while updating user.', $e->getMessage());
+    }
+}
 /**
  * Update user specifics including role, status, and branch assignments
  */
