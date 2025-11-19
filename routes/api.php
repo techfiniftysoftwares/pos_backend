@@ -81,16 +81,14 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/switch-branch', [PinAuthController::class, 'switchBranch']);
         Route::post('/reset-pin/{user}', [PinAuthController::class, 'resetUserPin']);
     });
-
-    // user routes
-    Route::apiResource('users', UserController::class)->only(['index', 'show', 'destroy']);
-    Route::get('user/profile', [UserController::class, 'getProfile']);
-    Route::get('users/{user}/edit', [UserController::class, 'edit']);
-    Route::put('user/profile', [UserController::class, 'updateProfile']);
-    Route::put('users/{user}/edit', [UserController::class, 'updateUserSpecifics']);
-    Route::put('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
-    Route::post('users/update-primary-branch', [UserController::class, 'updatePrimaryBranch']);
-
+     Route::apiResource('users', UserController::class); // This includes all CRUD routes
+     // Keep your existing custom routes
+     Route::get('user/profile', [UserController::class, 'getProfile']);
+     Route::put('user/profile', [UserController::class, 'updateProfile']);
+     Route::get('users/{user}/edit', [UserController::class, 'edit']);
+     Route::put('users/{user}/edit', [UserController::class, 'updateUserSpecifics']);
+     Route::put('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+     Route::post('users/update-primary-branch', [UserController::class, 'updatePrimaryBranch']);
 
     Route::apiResource('/roles', RoleController::class);
 
