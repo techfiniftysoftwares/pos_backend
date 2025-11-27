@@ -18,6 +18,7 @@ class Payment extends Model
         'reference_number',
         'transaction_id',
         'amount',
+        'currency_id', // 🆕 ADDED
         'currency',
         'exchange_rate',
         'amount_in_base_currency',
@@ -66,6 +67,12 @@ class Payment extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    // 🆕 ADDED
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 
     public function processedBy()
