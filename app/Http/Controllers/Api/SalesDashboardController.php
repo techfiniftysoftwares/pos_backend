@@ -18,11 +18,6 @@ class SalesDashboardController extends Controller
     /**
      * TAB 1: SALES OVERVIEW
      */
-
-  /**
- * Function 1: Get Sales Summary
- * Endpoint: GET /api/sales-dashboard/sales-summary
- */
 public function getSalesSummary(Request $request)
 {
     try {
@@ -65,10 +60,15 @@ public function getSalesSummary(Request $request)
         $totalTransactions = $query->count();
         $averageOrderValue = $totalTransactions > 0 ? $totalSales / $totalTransactions : 0;
 
-        $firstSale = Sale::whereIn('status', ['completed', 'pending'])
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->whereIn('status', ['completed', 'pending'])
             ->where('business_id', $businessId)
             ->first();
-        $currency = $firstSale->currency ?? 'KES';
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         // Add status breakdown
         $statusBreakdown = Sale::select('status', DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
@@ -110,10 +110,6 @@ public function getSalesSummary(Request $request)
         return queryErrorResponse('Failed to get sales summary', $e->getMessage());
     }
 }
-   /**
- * Function 2: Get Sales Comparison
- * Endpoint: GET /api/sales-dashboard/sales-comparison
- */
 public function getSalesComparison(Request $request)
 {
     try {
@@ -206,11 +202,6 @@ public function getSalesComparison(Request $request)
         return queryErrorResponse('Failed to get sales comparison', $e->getMessage());
     }
 }
-
-/**
- * Function 3: Get Top Selling Products
- * Endpoint: GET /api/sales-dashboard/top-selling-products
- */
 public function getTopSellingProducts(Request $request)
 {
     try {
@@ -286,10 +277,6 @@ public function getTopSellingProducts(Request $request)
     }
 }
 
-/**
- * Function 4: Get Sales By Payment Method
- * Endpoint: GET /api/sales-dashboard/sales-by-payment-method
- */
 public function getSalesByPaymentMethod(Request $request)
 {
     try {
@@ -307,7 +294,7 @@ public function getSalesByPaymentMethod(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get sales with payment method breakdown through sale_payments
+        // 🆕 CRITICAL FIX: Use amount_in_sale_currency instead of amount
         $query = DB::table('sales')
             ->join('sale_payments', 'sales.id', '=', 'sale_payments.sale_id')
             ->join('payments', 'sale_payments.payment_id', '=', 'payments.id')
@@ -316,7 +303,7 @@ public function getSalesByPaymentMethod(Request $request)
                 'payment_methods.name as payment_method',
                 'payment_methods.type as payment_type',
                 DB::raw('COUNT(DISTINCT sales.id) as transaction_count'),
-                DB::raw('SUM(sale_payments.amount) as total_amount'),
+                DB::raw('SUM(sale_payments.amount_in_sale_currency) as total_amount'), // 🆕 FIXED
                 DB::raw('SUM(payments.fee_amount) as total_fees')
             )
             ->whereIn('sales.status', ['completed', 'pending'])
@@ -372,11 +359,6 @@ public function getSalesByPaymentMethod(Request $request)
         return queryErrorResponse('Failed to get sales by payment method', $e->getMessage());
     }
 }
-
-/**
- * Widget 1 (Tab 2): Sales Growth Trend
- * Endpoint: GET /api/sales-dashboard/sales-growth-trend
- */
 public function getSalesGrowthTrend(Request $request)
 {
     try {
@@ -396,10 +378,15 @@ public function getSalesGrowthTrend(Request $request)
         $endDate = Carbon::today();
         $startDate = Carbon::today()->subDays($days - 1);
 
-        // Get currency from first sale
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = Sale::select(
             DB::raw('DATE(completed_at) as date'),
@@ -504,11 +491,6 @@ public function getSalesGrowthTrend(Request $request)
         return queryErrorResponse('Failed to get sales growth trend', $e->getMessage());
     }
 }
-
-/**
- * Widget 2 (Tab 2): Peak Sales Hours
- * Endpoint: GET /api/sales-dashboard/peak-sales-hours
- */
 public function getPeakSalesHours(Request $request)
 {
     try {
@@ -526,10 +508,15 @@ public function getPeakSalesHours(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = Sale::select(
             DB::raw('HOUR(completed_at) as hour'),
@@ -670,10 +657,15 @@ public function getCashierPerformance(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = Sale::select(
             'sales.user_id',
@@ -766,7 +758,6 @@ public function getCashierPerformance(Request $request)
         return queryErrorResponse('Failed to get cashier performance', $e->getMessage());
     }
 }
-
 /**
  * Widget 4 (Tab 2): Sales By Category
  * Endpoint: GET /api/sales-dashboard/sales-by-category
@@ -788,10 +779,15 @@ public function getSalesByCategory(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = SaleItem::select(
             'categories.id as category_id',
@@ -929,10 +925,15 @@ public function getProductSummary(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         // Base query for sale items
         $saleItemsQuery = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -1089,7 +1090,6 @@ public function getProductSummary(Request $request)
         return queryErrorResponse('Failed to get product summary', $e->getMessage());
     }
 }
-
 /**
  * Widget 2 (Tab 3): Product Performance
  * Endpoint: GET /api/sales-dashboard/product-performance
@@ -1112,10 +1112,15 @@ public function getProductPerformance(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = SaleItem::select(
             'products.id as product_id',
@@ -1225,7 +1230,6 @@ public function getProductPerformance(Request $request)
         return queryErrorResponse('Failed to get product performance', $e->getMessage());
     }
 }
-
 /**
  * Widget 3 (Tab 3): Low Stock Alerts
  * Endpoint: GET /api/sales-dashboard/low-stock-alerts
@@ -1246,10 +1250,15 @@ public function getLowStockAlerts(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = Product::select(
             'products.id',
@@ -1340,7 +1349,6 @@ public function getLowStockAlerts(Request $request)
         return queryErrorResponse('Failed to get low stock alerts', $e->getMessage());
     }
 }
-
 /**
  * Widget 4 (Tab 3): Slow Moving Products
  * Endpoint: GET /api/sales-dashboard/slow-moving-products
@@ -1362,10 +1370,15 @@ public function getSlowMovingProducts(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $dateThreshold = Carbon::now()->subDays($days)->toDateString();
 
@@ -1457,7 +1470,6 @@ public function getSlowMovingProducts(Request $request)
         return queryErrorResponse('Failed to get slow moving products', $e->getMessage());
     }
 }
-
 /**
  * Widget 5 (Tab 3): Category Performance
  * Endpoint: GET /api/sales-dashboard/category-performance
@@ -1479,10 +1491,15 @@ public function getCategoryPerformance(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         $query = SaleItem::select(
             'categories.id as category_id',
@@ -1619,12 +1636,17 @@ public function getPaymentMethodAnalytics(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
 
-        // Get payment method breakdown
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
+
+        // 🚨 CRITICAL FIX: Use amount_in_sale_currency instead of amount
         $query = DB::table('sales')
             ->join('sale_payments', 'sales.id', '=', 'sale_payments.sale_id')
             ->join('payments', 'sale_payments.payment_id', '=', 'payments.id')
@@ -1634,9 +1656,9 @@ public function getPaymentMethodAnalytics(Request $request)
                 'payment_methods.name as payment_method',
                 'payment_methods.type as payment_type',
                 DB::raw('COUNT(DISTINCT sales.id) as transaction_count'),
-                DB::raw('SUM(sale_payments.amount) as total_amount'),
+                DB::raw('SUM(sale_payments.amount_in_sale_currency) as total_amount'), // 🆕 FIXED
                 DB::raw('SUM(payments.fee_amount) as total_fees'),
-                DB::raw('AVG(sale_payments.amount) as average_transaction_value')
+                DB::raw('AVG(sale_payments.amount_in_sale_currency) as average_transaction_value') // 🆕 FIXED
             )
             ->whereIn('sales.status', ['completed', 'pending'])
             ->where('payments.status', 'completed')
@@ -1772,7 +1794,6 @@ public function getPaymentMethodAnalytics(Request $request)
         return queryErrorResponse('Failed to get payment method analytics', $e->getMessage());
     }
 }
-
 /**
  * Function 2 (Tab 4): Return & Refund Summary
  * Shows returns, refunds, and return reasons
@@ -1796,10 +1817,15 @@ public function getReturnRefundSummary(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         // Get return transactions
         $returnsQuery = DB::table('return_transactions')
@@ -1952,7 +1978,6 @@ public function getReturnRefundSummary(Request $request)
         return queryErrorResponse('Failed to get return refund summary', $e->getMessage());
     }
 }
-
 /**
  * Function 3 (Tab 4): Discount Usage Summary
  * Shows discounts applied, codes used, and savings
@@ -1976,10 +2001,15 @@ public function getDiscountUsageSummary(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         // Get sales with discounts
         $salesQuery = Sale::where('business_id', $businessId)
@@ -2182,10 +2212,15 @@ public function getCreditSalesSummary(Request $request)
             return errorResponse('You do not have access to this branch', 403);
         }
 
-        // Get currency
-        $currency = Sale::where('business_id', $businessId)
-            ->whereNotNull('currency')
-            ->value('currency') ?? 'KES';
+        // 🆕 Get currency from first sale's currency relationship
+        $firstSale = Sale::with('currency')
+            ->where('business_id', $businessId)
+            ->whereNotNull('currency_id')
+            ->first();
+
+        $currency = $firstSale && $firstSale->currency
+            ? $firstSale->currency->code
+            : 'KES';
 
         // Get credit sales
         $creditSalesQuery = Sale::where('business_id', $businessId)
