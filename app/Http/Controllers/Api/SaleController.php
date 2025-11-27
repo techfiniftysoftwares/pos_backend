@@ -12,6 +12,7 @@ use App\Models\Stock;
 use App\Models\StockBatch;
 use App\Models\StockMovement;
 use App\Models\Payment;
+use App\Models\Currency;
 use App\Models\Customer;
 use App\Models\CustomerCreditTransaction;
 use Illuminate\Http\Request;
@@ -85,83 +86,81 @@ class SaleController extends Controller
         }
     }
 
-    /**
-     * Calculate totals before completing sale (preview)
-     */
-    public function calculateTotals(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.discount_amount' => 'nullable|numeric|min:0',
-            'currency' => 'nullable|string|size:3',
-            'exchange_rate' => 'nullable|numeric|min:0',
-        ]);
+  /**
+ * Calculate totals before completing sale (preview)
+ */
+public function calculateTotals(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'currency_id' => 'required|exists:currencies,id', // 🆕 Changed from 'currency' string
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.quantity' => 'required|numeric|min:0.01',
+        'items.*.discount_amount' => 'nullable|numeric|min:0',
+    ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
-        }
-
-        try {
-            $items = $request->items;
-            $subtotal = 0;
-            $totalTax = 0;
-            $totalDiscount = 0;
-            $itemsBreakdown = [];
-
-            foreach ($items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $quantity = $item['quantity'];
-                $unitPrice = $product->selling_price;
-                $itemDiscount = $item['discount_amount'] ?? 0;
-
-                $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
-                $taxRate = $product->tax_rate ?? 0;
-                $taxAmount = ($lineSubtotal * $taxRate) / 100;
-                $lineTotal = $lineSubtotal + $taxAmount;
-
-                $subtotal += $lineSubtotal;
-                $totalTax += $taxAmount;
-                $totalDiscount += $itemDiscount;
-
-                $itemsBreakdown[] = [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'discount_amount' => $itemDiscount,
-                    'tax_rate' => $taxRate,
-                    'tax_amount' => round($taxAmount, 2),
-                    'line_total' => round($lineTotal, 2),
-                ];
-            }
-
-            $grandTotal = $subtotal + $totalTax;
-
-            $currency = $request->currency ?? 'USD';
-            $exchangeRate = $request->exchange_rate ?? 1.0;
-            $totalInBaseCurrency = $grandTotal * $exchangeRate;
-
-            return successResponse('Totals calculated successfully', [
-                'items' => $itemsBreakdown,
-                'subtotal' => round($subtotal, 2),
-                'tax_amount' => round($totalTax, 2),
-                'discount_amount' => round($totalDiscount, 2),
-                'total_amount' => round($grandTotal, 2),
-                'currency' => $currency,
-                'exchange_rate' => $exchangeRate,
-                'total_in_base_currency' => round($totalInBaseCurrency, 2),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to calculate totals', [
-                'error' => $e->getMessage(),
-            ]);
-            return serverErrorResponse('Failed to calculate totals', $e->getMessage());
-        }
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
     }
-    /**
- * Create new sale (complete transaction)
+
+    try {
+        // 🆕 Get currency object
+        $currency = Currency::findOrFail($request->currency_id);
+
+        $items = $request->items;
+        $subtotal = 0;
+        $totalTax = 0;
+        $totalDiscount = 0;
+        $itemsBreakdown = [];
+
+        foreach ($items as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            $quantity = $item['quantity'];
+            $unitPrice = $product->selling_price;
+            $itemDiscount = $item['discount_amount'] ?? 0;
+
+            $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+            $taxRate = $product->tax_rate ?? 0;
+            $taxAmount = ($lineSubtotal * $taxRate) / 100;
+            $lineTotal = $lineSubtotal + $taxAmount;
+
+            $subtotal += $lineSubtotal;
+            $totalTax += $taxAmount;
+            $totalDiscount += $itemDiscount;
+
+            $itemsBreakdown[] = [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'discount_amount' => $itemDiscount,
+                'tax_rate' => $taxRate,
+                'tax_amount' => round($taxAmount, 2),
+                'line_total' => round($lineTotal, 2),
+            ];
+        }
+
+        $grandTotal = $subtotal + $totalTax;
+
+        return successResponse('Totals calculated successfully', [
+            'items' => $itemsBreakdown,
+            'subtotal' => round($subtotal, 2),
+            'tax_amount' => round($totalTax, 2),
+            'discount_amount' => round($totalDiscount, 2),
+            'total_amount' => round($grandTotal, 2),
+            'currency_id' => $currency->id, // 🆕
+            'currency_code' => $currency->code, // 🆕
+            'currency_symbol' => $currency->symbol, // 🆕
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Failed to calculate totals', [
+            'error' => $e->getMessage(),
+        ]);
+        return serverErrorResponse('Failed to calculate totals', $e->getMessage());
+    }
+}
+/**
+ * Create new sale (complete transaction with multi-currency support)
  */
 public function store(Request $request)
 {
@@ -169,6 +168,7 @@ public function store(Request $request)
         'business_id' => 'required|exists:businesses,id',
         'branch_id' => 'required|exists:branches,id',
         'customer_id' => 'nullable|exists:customers,id',
+        'currency_id' => 'required|exists:currencies,id', // 🆕 Sale currency
         'items' => 'required|array|min:1',
         'items.*.product_id' => 'required|exists:products,id',
         'items.*.quantity' => 'required|numeric|min:0.01',
@@ -177,9 +177,9 @@ public function store(Request $request)
         'payments' => 'required_if:payment_type,cash,mixed|array',
         'payments.*.payment_method_id' => 'required_with:payments|exists:payment_methods,id',
         'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+        'payments.*.currency_id' => 'required_with:payments|exists:currencies,id', // 🆕 Payment currency
+        'payments.*.exchange_rate' => 'required_with:payments|numeric|min:0.0001', // 🆕
         'payments.*.transaction_id' => 'nullable|string',
-        'currency' => 'nullable|string|size:3',
-        'exchange_rate' => 'nullable|numeric|min:0',
         'notes' => 'nullable|string',
     ]);
 
@@ -189,6 +189,9 @@ public function store(Request $request)
 
     try {
         DB::beginTransaction();
+
+        // Get sale currency
+        $saleCurrency = Currency::findOrFail($request->currency_id);
 
         // Check stock availability for all items first
         foreach ($request->items as $item) {
@@ -203,7 +206,7 @@ public function store(Request $request)
             }
         }
 
-        // Calculate totals
+        // Calculate totals in SALE CURRENCY
         $subtotal = 0;
         $totalTax = 0;
         $totalDiscount = 0;
@@ -224,8 +227,25 @@ public function store(Request $request)
         }
 
         $grandTotal = $subtotal + $totalTax;
-        $currency = $request->currency ?? 'USD';
-        $exchangeRate = $request->exchange_rate ?? 1.0;
+
+        // 🆕 Validate multi-currency payment amounts
+        if ($request->payment_type !== 'credit') {
+            $totalPaidInSaleCurrency = 0;
+
+            foreach ($request->payments as $payment) {
+                // Convert each payment to sale currency
+                $amountInSaleCurrency = $payment['amount'] / $payment['exchange_rate'];
+                $totalPaidInSaleCurrency += $amountInSaleCurrency;
+            }
+
+            // Allow small rounding differences (1 cent)
+            if (abs($totalPaidInSaleCurrency - $grandTotal) > 0.01) {
+                return errorResponse(
+                    "Payment mismatch. Expected: {$grandTotal} {$saleCurrency->code}, Received: {$totalPaidInSaleCurrency} {$saleCurrency->code}",
+                    400
+                );
+            }
+        }
 
         // Credit sale validation
         if ($request->payment_type === 'credit') {
@@ -247,12 +267,14 @@ public function store(Request $request)
             'branch_id' => $request->branch_id,
             'customer_id' => $request->customer_id,
             'user_id' => Auth::id(),
+            'currency_id' => $request->currency_id, // 🆕 Use currency_id
+            'currency' => $saleCurrency->code, // Keep for backward compatibility
             'subtotal' => $subtotal,
             'tax_amount' => $totalTax,
             'discount_amount' => $totalDiscount,
             'total_amount' => $grandTotal,
-            'currency' => $currency,
-            'exchange_rate' => $exchangeRate,
+            'exchange_rate' => 1.0, // Keep for backward compatibility (deprecated)
+            'total_in_base_currency' => $grandTotal, // Will be calculated in boot method
             'status' => 'completed',
             'payment_type' => $request->payment_type,
             'payment_status' => $request->payment_type === 'credit' ? 'unpaid' : 'paid',
@@ -261,7 +283,7 @@ public function store(Request $request)
             'completed_at' => now(),
         ]);
 
-        // Create Sale Items and Deduct Stock Using FIFO
+        // Create Sale Items and Deduct Stock Using FIFO (Your existing logic - KEEP IT!)
         foreach ($request->items as $item) {
             $product = Product::findOrFail($item['product_id']);
             $quantity = $item['quantity'];
@@ -319,7 +341,7 @@ public function store(Request $request)
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
-                'unit_cost' => $averageUnitCost,  // ACTUAL cost used from batches
+                'unit_cost' => $averageUnitCost,
                 'tax_rate' => $taxRate,
                 'tax_amount' => $taxAmount,
                 'discount_amount' => $itemDiscount,
@@ -343,7 +365,7 @@ public function store(Request $request)
             ]);
         }
 
-        // Handle Payments
+        // 🆕 Handle Multi-Currency Payments
         if ($request->payment_type === 'credit') {
             // Create Customer Credit Transaction
             CustomerCreditTransaction::create([
@@ -356,16 +378,25 @@ public function store(Request $request)
                 'notes' => "Credit sale: {$sale->sale_number}",
             ]);
         } else {
-            // Create Payment records
+            // Create Multi-Currency Payment records
             foreach ($request->payments as $paymentData) {
+                // Convert payment amount to sale currency
+                $amountInSaleCurrency = $paymentData['amount'] / $paymentData['exchange_rate'];
+
+                // Get payment currency
+                $paymentCurrency = Currency::findOrFail($paymentData['currency_id']);
+
+                // Create Payment record
                 $payment = Payment::create([
                     'business_id' => $request->business_id,
                     'branch_id' => $request->branch_id,
                     'payment_method_id' => $paymentData['payment_method_id'],
                     'customer_id' => $request->customer_id,
-                    'amount' => $paymentData['amount'],
-                    'currency' => $currency,
-                    'exchange_rate' => $exchangeRate,
+                    'amount' => $paymentData['amount'], // 🆕 Original payment currency amount
+                    'currency_id' => $paymentData['currency_id'], // 🆕 Payment currency
+                    'currency' => $paymentCurrency->code, // Keep for backward compatibility
+                    'exchange_rate' => $paymentData['exchange_rate'], // 🆕 Exchange rate used
+                    'amount_in_base_currency' => $amountInSaleCurrency, // 🆕 Converted amount
                     'status' => 'completed',
                     'payment_type' => 'payment',
                     'transaction_id' => $paymentData['transaction_id'] ?? null,
@@ -373,18 +404,30 @@ public function store(Request $request)
                     'processed_by' => Auth::id(),
                 ]);
 
-                // Link Payment to Sale
+                // 🆕 Link Payment to Sale with currency details
                 SalePayment::create([
                     'sale_id' => $sale->id,
                     'payment_id' => $payment->id,
-                    'amount' => $paymentData['amount'],
+                    'amount' => $paymentData['amount'], // Original payment amount
+                    'currency_id' => $paymentData['currency_id'], // 🆕 Payment currency
+                    'exchange_rate' => $paymentData['exchange_rate'], // 🆕 Rate used
+                    'amount_in_sale_currency' => $amountInSaleCurrency, // 🆕 Converted amount
                 ]);
             }
         }
 
         DB::commit();
 
-        $sale->load(['items.product', 'customer', 'cashier', 'branch', 'salePayments.payment']);
+        $sale->load([
+            'items.product',
+            'customer',
+            'cashier',
+            'branch',
+            'currency', // 🆕 Load currency relationship
+            'salePayments.payment.paymentMethod',
+            'salePayments.payment.currency', // 🆕 Load payment currency
+            'salePayments.currency' // 🆕 Load sale payment currency
+        ]);
 
         return successResponse('Sale completed successfully', $sale, 201);
     } catch (\Exception $e) {

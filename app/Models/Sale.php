@@ -21,6 +21,7 @@ class Sale extends Model
         'tax_amount',
         'discount_amount',
         'total_amount',
+        'currency_id', // 🆕 ADDED
         'currency',
         'exchange_rate',
         'total_in_base_currency',
@@ -66,6 +67,12 @@ class Sale extends Model
     public function cashier()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // 🆕 ADDED
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 
     public function items()
@@ -161,10 +168,17 @@ class Sale extends Model
         return $this->payment_status === 'paid';
     }
 
+    // 🆕 UPDATED - Use amount_in_sale_currency instead of amount
     public function getRemainingBalance()
     {
-        $totalPaid = $this->salePayments()->sum('amount');
+        $totalPaid = $this->salePayments()->sum('amount_in_sale_currency');
         return $this->total_amount - $totalPaid;
+    }
+
+    // 🆕 ADDED - Get total paid in sale currency
+    public function getTotalPaidInSaleCurrency()
+    {
+        return $this->salePayments()->sum('amount_in_sale_currency');
     }
 
     public function canBeReturned()
