@@ -18,12 +18,11 @@ class SalePayment extends Model
         'amount_in_sale_currency', // 🆕 ADDED
     ];
 
-    protected $casts = [
-        'amount' => 'decimal:2',
-        'exchange_rate' => 'decimal:4', // 🆕 ADDED
-        'amount_in_sale_currency' => 'decimal:2', // 🆕 ADDED
-    ];
-
+   protected $casts = [
+    'amount' => 'decimal:2',
+    'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
+    'amount_in_sale_currency' => 'decimal:2',
+];
     // Relationships
     public function sale()
     {

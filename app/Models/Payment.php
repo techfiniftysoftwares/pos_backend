@@ -37,17 +37,16 @@ class Payment extends Model
         'processed_by',
     ];
 
-    protected $casts = [
-        'amount' => 'decimal:2',
-        'exchange_rate' => 'decimal:4',
-        'amount_in_base_currency' => 'decimal:2',
-        'fee_amount' => 'decimal:2',
-        'net_amount' => 'decimal:2',
-        'payment_date' => 'datetime',
-        'reconciled_at' => 'datetime',
-        'metadata' => 'array',
-    ];
-
+   protected $casts = [
+    'amount' => 'decimal:2',
+    'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
+    'amount_in_base_currency' => 'decimal:2',
+    'fee_amount' => 'decimal:2',
+    'net_amount' => 'decimal:2',
+    'payment_date' => 'datetime',
+    'reconciled_at' => 'datetime',
+    'metadata' => 'array',
+];
     // Relationships
     public function business()
     {
