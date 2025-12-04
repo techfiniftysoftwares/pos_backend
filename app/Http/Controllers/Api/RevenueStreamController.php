@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RevenueStream;
+use App\Models\Business; // 🆕 Add this import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,14 @@ class RevenueStreamController extends Controller
         try {
             $businessId = $request->user()->business_id;
 
+            // 🆕 Get business with base currency
+            $business = Business::with('baseCurrency')->findOrFail($businessId);
+
+            // 🆕 Check if business has a base currency configured
+            if (!$business->base_currency_id) {
+                return errorResponse('Business does not have a base currency configured. Please contact administrator.', 400);
+            }
+
             DB::beginTransaction();
 
             $streamData = [
@@ -84,7 +93,8 @@ class RevenueStreamController extends Controller
                 'name' => $request->name,
                 'code' => strtolower($request->code),
                 'description' => $request->description,
-                'default_currency' => $request->input('default_currency', 'KES'),
+                // 🆕 Use business base currency if not provided
+                'default_currency' => $request->input('default_currency', $business->baseCurrency->code),
                 'requires_approval' => $request->input('requires_approval', false),
                 'is_active' => $request->input('is_active', true),
             ];
