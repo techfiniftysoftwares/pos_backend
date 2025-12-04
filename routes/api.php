@@ -389,17 +389,7 @@ Route::middleware(['auth:api'])->group(function () {
         Route::patch('/{revenueStream}/toggle-status', [RevenueStreamController::class, 'toggleStatus']);
     });
 
-    // Revenue Entries Routes
-    Route::prefix('revenue-entries')->group(function () {
-        Route::get('/', [RevenueEntryController::class, 'index']);
-        Route::post('/', [RevenueEntryController::class, 'store']);
-        Route::get('/analytics', [RevenueEntryController::class, 'analytics']);
-        Route::get('/{revenueEntry}', [RevenueEntryController::class, 'show']);
-        Route::put('/{revenueEntry}', [RevenueEntryController::class, 'update']);
-        Route::delete('/{revenueEntry}', [RevenueEntryController::class, 'destroy']);
-        Route::patch('/{revenueEntry}/approve', [RevenueEntryController::class, 'approve']);
-        Route::patch('/{revenueEntry}/reject', [RevenueEntryController::class, 'reject']);
-    });
+   
     Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
     Route::get('/admin-dashboard/user-growth-trend', [AdminDashboardController::class, 'getUserGrowthTrend']);
     Route::get('/admin-dashboard/users-by-role', [AdminDashboardController::class, 'getUsersByRole']);
