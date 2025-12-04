@@ -48,47 +48,51 @@ class BusinessController extends Controller
      * Create new business
      */
     public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:businesses,email',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive,suspended',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:businesses,email',
+        'phone' => 'nullable|string|max:20',
+        'address' => 'nullable|string',
+        'status' => 'sometimes|in:active,inactive,suspended',
+        'base_currency_id' => 'required|exists:currencies,id',
+    ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $business = Business::create($validator->validated());
-
-            // Create main branch automatically
-            $mainBranch = Branch::create([
-                'business_id' => $business->id,
-                'name' => $business->name . ' - Main Branch',
-                'phone' => $business->phone,
-                'address' => $business->address ?? 'Main Office',
-                'is_main_branch' => true,
-                'is_active' => true
-            ]);
-
-            DB::commit();
-
-            return successResponse('Business created successfully', [
-                'business' => $business,
-                'main_branch' => $mainBranch
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return serverErrorResponse('Failed to create business', $e->getMessage());
-        }
+    if ($validator->fails()) {
+        return validationErrorResponse($validator->errors());
     }
 
+    try {
+        DB::beginTransaction();
+
+        $business = Business::create($validator->validated());
+
+        // Create main branch automatically
+        $mainBranch = Branch::create([
+            'business_id' => $business->id,
+            'name' => $business->name . ' - Main Branch',
+            'code' => 'MAIN001',
+            'phone' => $business->phone,
+            'address' => $business->address ?? 'Main Office',
+            'is_main_branch' => true,
+            'is_active' => true
+        ]);
+
+        DB::commit();
+
+        // Load currency relationship
+        $business->load('baseCurrency');
+
+        return successResponse('Business created successfully', [
+            'business' => $business,
+            'main_branch' => $mainBranch
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return serverErrorResponse('Failed to create business', $e->getMessage());
+    }
+}
     /**
      * Get specific business
      */

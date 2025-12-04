@@ -14,7 +14,8 @@ class Business extends Model
         'email',
         'phone',
         'address',
-        'status'
+        'status',
+        'base_currency_id',
     ];
 
     // Relationships
@@ -36,6 +37,12 @@ class Business extends Model
     public function activeBranches()
     {
         return $this->hasMany(Branch::class)->where('is_active', true);
+    }
+
+    // Currency relationship
+    public function baseCurrency()
+    {
+        return $this->belongsTo(Currency::class, 'base_currency_id');
     }
 
     // Scopes

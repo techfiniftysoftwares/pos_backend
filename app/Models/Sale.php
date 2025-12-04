@@ -35,18 +35,18 @@ class Sale extends Model
         'completed_at',
     ];
 
-    protected $casts = [
-        'subtotal' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'total_amount' => 'decimal:2',
-        'exchange_rate' => 'decimal:4',
-        'total_in_base_currency' => 'decimal:2',
-        'is_credit_sale' => 'boolean',
-        'credit_due_date' => 'date',
-        'completed_at' => 'datetime',
-        'metadata' => 'array',
-    ];
+  protected $casts = [
+    'subtotal' => 'decimal:2',
+    'tax_amount' => 'decimal:2',
+    'discount_amount' => 'decimal:2',
+    'total_amount' => 'decimal:2',
+    'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
+    'total_in_base_currency' => 'decimal:2',
+    'is_credit_sale' => 'boolean',
+    'credit_due_date' => 'date',
+    'completed_at' => 'datetime',
+    'metadata' => 'array',
+];
 
     // Relationships
     public function business()
