@@ -25,6 +25,29 @@ class StorageLocationController extends Controller
             $search = $request->input('search');
             $businessId = $request->user()->business_id;
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'name');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'name',
+                'code',
+                'location_type',
+                'capacity',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'name';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = StorageLocation::with(['branch'])
                 ->forBusiness($businessId);
 
@@ -41,13 +64,13 @@ class StorageLocationController extends Controller
             }
 
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%");
+                        ->orWhere('code', 'like', "%{$search}%");
                 });
             }
 
-            $locations = $query->orderBy('name', 'asc')
+            $locations = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             $locations->getCollection()->transform(function ($location) {

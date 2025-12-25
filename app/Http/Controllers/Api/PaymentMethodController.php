@@ -20,6 +20,35 @@ class PaymentMethodController extends Controller
             $businessId = $request->input('business_id');
             $type = $request->input('type');
             $isActive = $request->input('is_active');
+            $search = $request->input('search');
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'sort_order');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'name',
+                'code',
+                'type',
+                'transaction_fee_percentage',
+                'transaction_fee_fixed',
+                'minimum_amount',
+                'maximum_amount',
+                'requires_reference',
+                'is_active',
+                'sort_order',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'sort_order';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = PaymentMethod::query()->with(['business']);
 
@@ -38,7 +67,16 @@ class PaymentMethodController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $paymentMethods = $query->ordered()->paginate($perPage);
+            // Search filter
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('type', 'like', "%{$search}%");
+                });
+            }
+
+            $paymentMethods = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
 
             return successResponse('Payment methods retrieved successfully', $paymentMethods);
         } catch (\Exception $e) {

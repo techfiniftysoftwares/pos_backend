@@ -30,6 +30,30 @@ class PaymentController extends Controller
             $dateTo = $request->input('date_to');
             $search = $request->input('search');
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'payment_date');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'reference_number',
+                'amount',
+                'net_amount',
+                'payment_type',
+                'status',
+                'payment_date',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'payment_date';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = Payment::query()
                 ->with(['business', 'branch', 'paymentMethod', 'customer', 'processedBy']);
 
@@ -71,15 +95,19 @@ class PaymentController extends Controller
                 $query->whereDate('payment_date', '<=', $dateTo);
             }
 
-            // Search by reference number or transaction ID
+            // Search by reference number, transaction ID, or customer name
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('reference_number', 'like', "%{$search}%")
-                        ->orWhere('transaction_id', 'like', "%{$search}%");
+                        ->orWhere('transaction_id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($cq) use ($search) {
+                            $cq->where('name', 'like', "%{$search}%")
+                                ->orWhere('customer_number', 'like', "%{$search}%");
+                        });
                 });
             }
 
-            $payments = $query->orderBy('payment_date', 'desc')
+            $payments = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             return successResponse('Payments retrieved successfully', $payments);

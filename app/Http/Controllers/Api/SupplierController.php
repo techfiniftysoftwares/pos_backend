@@ -22,15 +22,41 @@ class SupplierController extends Controller
             $isActive = $request->input('is_active');
             $businessId = $request->user()->business_id;
 
-            $query = Supplier::forBusiness($businessId);
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'name');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'name',
+                'contact_person',
+                'email',
+                'phone',
+                'payment_terms',
+                'credit_limit',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'name';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
+            $query = Supplier::forBusiness($businessId)
+                ->withCount('products');
 
             // Search filter
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%")
-                      ->orWhere('contact_person', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('contact_person', 'like', "%{$search}%");
                 });
             }
 
@@ -39,7 +65,7 @@ class SupplierController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $suppliers = $query->orderBy('name', 'asc')
+            $suppliers = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Transform the data
@@ -154,7 +180,7 @@ class SupplierController extends Controller
             $supplierData['active_products_count'] = $supplier->products()->where('is_active', true)->count();
 
             // Add products list
-            $supplierData['products'] = $supplier->products->map(function($product) {
+            $supplierData['products'] = $supplier->products->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,

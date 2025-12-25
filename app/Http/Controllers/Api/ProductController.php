@@ -30,6 +30,29 @@ class ProductController extends Controller
             $lowStock = $request->input('low_stock'); // boolean
             $businessId = $request->user()->business_id;
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'name');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns to prevent SQL injection
+            $allowedSortColumns = [
+                'name',
+                'sku',
+                'cost_price',
+                'selling_price',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'name';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = Product::with(['category', 'unit', 'supplier'])
                 ->forBusiness($businessId);
 
@@ -58,7 +81,7 @@ class ProductController extends Controller
                 $query->lowStock();
             }
 
-            $products = $query->orderBy('name', 'asc')
+            $products = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Transform the data

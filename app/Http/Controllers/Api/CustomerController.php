@@ -23,6 +23,32 @@ class CustomerController extends Controller
             $isActive = $request->input('is_active');
             $businessId = $request->input('business_id');
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'customer_number',
+                'name',
+                'email',
+                'phone',
+                'customer_type',
+                'credit_limit',
+                'current_credit_balance',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = Customer::query()->with(['business']);
 
             // Filter by business
@@ -50,7 +76,7 @@ class CustomerController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $customers = $query->orderBy('created_at', 'desc')
+            $customers = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Add computed fields
@@ -106,72 +132,72 @@ class CustomerController extends Controller
      * Display the specified customer
      */
     /**
- * Display the specified customer
- */
-public function show(Customer $customer)
-{
-    try {
-        $customer->load([
-            'business',
-            'creditTransactions' => function ($query) {
-                $query->latest()->limit(10);
-            },
-            'points' => function ($query) {
-                $query->latest()->limit(10);
-            },
-            'giftCards'
-            // Removed 'segments' as it doesn't exist
-        ]);
+     * Display the specified customer
+     */
+    public function show(Customer $customer)
+    {
+        try {
+            $customer->load([
+                'business',
+                'creditTransactions' => function ($query) {
+                    $query->latest()->limit(10);
+                },
+                'points' => function ($query) {
+                    $query->latest()->limit(10);
+                },
+                'giftCards'
+                // Removed 'segments' as it doesn't exist
+            ]);
 
-        $customerData = [
-            'id' => $customer->id,
-            'business_id' => $customer->business_id,
-            'customer_number' => $customer->customer_number,
-            'name' => $customer->name,
-            'email' => $customer->email,
-            'phone' => $customer->phone,
-            'secondary_phone' => $customer->secondary_phone,
-            'address' => $customer->address,
-            'city' => $customer->city,
-            'country' => $customer->country,
-            'customer_type' => $customer->customer_type,
-            'credit_limit' => $customer->credit_limit,
-            'current_credit_balance' => $customer->current_credit_balance,
-            'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
-            'is_active' => $customer->is_active,
-            'notes' => $customer->notes,
-            'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
-            'business' => $customer->business ? $customer->business->only(['id', 'name']) : null,
-            'points_balance' => $customer->getCurrentPointsBalance(),
-            'recent_credit_transactions' => $customer->creditTransactions->map(function ($transaction) {
-                return [
-                    'id' => $transaction->id,
-                    'type' => $transaction->transaction_type,
-                    'amount' => $transaction->amount,
-                    'balance' => $transaction->new_balance,
-                    'reference' => $transaction->reference_number,
-                    'date' => $transaction->created_at->format('Y-m-d H:i:s')
-                ];
-            }),
-            'recent_points' => $customer->points->map(function ($point) {
-                return [
-                    'id' => $point->id,
-                    'type' => $point->transaction_type,
-                    'points' => $point->points,
-                    'balance' => $point->new_balance,
-                    'date' => $point->created_at->format('Y-m-d H:i:s')
-                ];
-            }),
-            'gift_cards_count' => $customer->giftCards->count(),
-            'active_gift_cards' => $customer->giftCards->where('status', 'active')->count(),
-            // Removed segments data since relationship doesn't exist
-        ];
+            $customerData = [
+                'id' => $customer->id,
+                'business_id' => $customer->business_id,
+                'customer_number' => $customer->customer_number,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'secondary_phone' => $customer->secondary_phone,
+                'address' => $customer->address,
+                'city' => $customer->city,
+                'country' => $customer->country,
+                'customer_type' => $customer->customer_type,
+                'credit_limit' => $customer->credit_limit,
+                'current_credit_balance' => $customer->current_credit_balance,
+                'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
+                'is_active' => $customer->is_active,
+                'notes' => $customer->notes,
+                'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
+                'business' => $customer->business ? $customer->business->only(['id', 'name']) : null,
+                'points_balance' => $customer->getCurrentPointsBalance(),
+                'recent_credit_transactions' => $customer->creditTransactions->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'type' => $transaction->transaction_type,
+                        'amount' => $transaction->amount,
+                        'balance' => $transaction->new_balance,
+                        'reference' => $transaction->reference_number,
+                        'date' => $transaction->created_at->format('Y-m-d H:i:s')
+                    ];
+                }),
+                'recent_points' => $customer->points->map(function ($point) {
+                    return [
+                        'id' => $point->id,
+                        'type' => $point->transaction_type,
+                        'points' => $point->points,
+                        'balance' => $point->new_balance,
+                        'date' => $point->created_at->format('Y-m-d H:i:s')
+                    ];
+                }),
+                'gift_cards_count' => $customer->giftCards->count(),
+                'active_gift_cards' => $customer->giftCards->where('status', 'active')->count(),
+                // Removed segments data since relationship doesn't exist
+            ];
 
-        return successResponse('Customer retrieved successfully', $customerData);
-    } catch (\Exception $e) {
-        return queryErrorResponse('Failed to retrieve customer', $e->getMessage());
+            return successResponse('Customer retrieved successfully', $customerData);
+        } catch (\Exception $e) {
+            return queryErrorResponse('Failed to retrieve customer', $e->getMessage());
+        }
     }
-}
 
     /**
      * Update the specified customer

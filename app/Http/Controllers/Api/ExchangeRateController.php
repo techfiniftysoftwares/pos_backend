@@ -60,8 +60,39 @@ class ExchangeRateController extends Controller
                 $query->whereDate('effective_date', '<=', $dateTo);
             }
 
-            $exchangeRates = $query->orderBy('effective_date', 'desc')
-                ->paginate($perPage);
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'effective_date');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            $allowedSortColumns = [
+                'rate',
+                'effective_date',
+                'is_active',
+                'created_at',
+                'from_currency',
+                'to_currency'
+            ];
+
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'effective_date';
+            }
+
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+
+            // Join tables if sorting by currency names
+            if ($sortBy === 'from_currency') {
+                $query->join('currencies as fc', 'exchange_rates.from_currency_id', '=', 'fc.id')
+                    ->select('exchange_rates.*')
+                    ->orderBy('fc.code', $sortDirection);
+            } elseif ($sortBy === 'to_currency') {
+                $query->join('currencies as tc', 'exchange_rates.to_currency_id', '=', 'tc.id')
+                    ->select('exchange_rates.*')
+                    ->orderBy('tc.code', $sortDirection);
+            } else {
+                $query->orderBy($sortBy, $sortDirection);
+            }
+
+            $exchangeRates = $query->paginate($perPage);
 
             return successResponse('Exchange rates retrieved successfully', $exchangeRates);
         } catch (\Exception $e) {
@@ -377,8 +408,8 @@ class ExchangeRateController extends Controller
                 DB::raw('AVG(total_amount) as average_sale'),
                 DB::raw('SUM(total_in_base_currency) as total_in_base_currency')
             )
-            ->groupBy('currency')
-            ->get();
+                ->groupBy('currency')
+                ->get();
 
             return successResponse('Sales by currency retrieved successfully', $salesByCurrency);
         } catch (\Exception $e) {
@@ -418,8 +449,8 @@ class ExchangeRateController extends Controller
                 DB::raw('SUM(amount) as total_collected'),
                 DB::raw('SUM(amount_in_base_currency) as total_in_base_currency')
             )
-            ->groupBy('currency')
-            ->get();
+                ->groupBy('currency')
+                ->get();
 
             return successResponse('Currency summary retrieved successfully', [
                 'date' => $date,

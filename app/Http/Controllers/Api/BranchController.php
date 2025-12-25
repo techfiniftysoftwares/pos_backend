@@ -22,6 +22,30 @@ class BranchController extends Controller
             $search = $request->input('search');
             $isActive = $request->input('is_active');
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'is_main_branch');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'name',
+                'code',
+                'phone',
+                'address',
+                'is_active',
+                'is_main_branch',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'is_main_branch';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+
             $query = Branch::query()->with(['business']);
 
             // Filter by business if specified
@@ -43,9 +67,16 @@ class BranchController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $branches = $query->orderBy('is_main_branch', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->paginate($perPage);
+            // Apply sorting
+            if ($sortBy === 'is_main_branch') {
+                // If sorting by main branch, secondary sort by created_at
+                $query->orderBy('is_main_branch', $sortDirection)
+                    ->orderBy('created_at', 'desc');
+            } else {
+                $query->orderBy($sortBy, $sortDirection);
+            }
+
+            $branches = $query->paginate($perPage);
 
             return successResponse('Branches retrieved successfully', $branches);
         } catch (\Exception $e) {

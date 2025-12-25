@@ -26,6 +26,30 @@ class CustomerPointController extends Controller
             $branchId = $request->input('branch_id');
             $dateFrom = $request->input('date_from');
             $dateTo = $request->input('date_to');
+            $search = $request->input('search');
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'transaction_type',
+                'points',
+                'previous_balance',
+                'new_balance',
+                'expires_at',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = CustomerPoint::query()
                 ->with(['customer', 'processedBy', 'branch']);
@@ -53,7 +77,17 @@ class CustomerPointController extends Controller
                 $query->whereDate('created_at', '<=', $dateTo);
             }
 
-            $points = $query->orderBy('created_at', 'desc')
+            // Search filter
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('customer_number', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $points = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             return successResponse('Point transactions retrieved successfully', $points);

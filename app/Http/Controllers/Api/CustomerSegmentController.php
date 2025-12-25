@@ -21,6 +21,28 @@ class CustomerSegmentController extends Controller
             $perPage = $request->input('per_page', 20);
             $businessId = $request->input('business_id');
             $isActive = $request->input('is_active');
+            $search = $request->input('search');
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'name',
+                'customers_count',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = CustomerSegment::query()
                 ->with(['business'])
@@ -36,7 +58,15 @@ class CustomerSegmentController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $segments = $query->orderBy('created_at', 'desc')
+            // Search filter
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            }
+
+            $segments = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             return successResponse('Customer segments retrieved successfully', $segments);

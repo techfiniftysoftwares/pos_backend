@@ -24,6 +24,29 @@ class CustomerCreditController extends Controller
             $branchId = $request->input('branch_id');
             $dateFrom = $request->input('date_from');
             $dateTo = $request->input('date_to');
+            $search = $request->input('search');
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'transaction_type',
+                'amount',
+                'previous_balance',
+                'new_balance',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = CustomerCreditTransaction::query()
                 ->with(['customer', 'paymentMethod', 'processedBy', 'branch']);
@@ -51,7 +74,18 @@ class CustomerCreditController extends Controller
                 $query->whereDate('created_at', '<=', $dateTo);
             }
 
-            $transactions = $query->orderBy('created_at', 'desc')
+            // Search filter (reference number)
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('reference_number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($cq) use ($search) {
+                            $cq->where('name', 'like', "%{$search}%")
+                                ->orWhere('customer_number', 'like', "%{$search}%");
+                        });
+                });
+            }
+
+            $transactions = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             return successResponse('Credit transactions retrieved successfully', $transactions);

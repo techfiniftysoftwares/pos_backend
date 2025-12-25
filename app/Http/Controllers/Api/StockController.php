@@ -23,10 +23,33 @@ class StockController extends Controller
             $perPage = $request->input('per_page', 20);
             $branchId = $request->input('branch_id');
             $productId = $request->input('product_id');
+            $categoryId = $request->input('category_id');
             $search = $request->input('search');
             $lowStock = $request->input('low_stock'); // boolean
             $outOfStock = $request->input('out_of_stock'); // boolean
             $businessId = $request->user()->business_id;
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'quantity',
+                'reserved_quantity',
+                'unit_cost',
+                'created_at',
+                'updated_at',
+                'last_restocked_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = Stock::with(['product.category', 'product.unit', 'branch'])
                 ->forBusiness($businessId);
@@ -41,12 +64,19 @@ class StockController extends Controller
                 $query->where('product_id', $productId);
             }
 
+            // Category filter (filter by product's category)
+            if ($categoryId) {
+                $query->whereHas('product', function ($q) use ($categoryId) {
+                    $q->where('category_id', $categoryId);
+                });
+            }
+
             // Search filter (product name or SKU)
             if ($search) {
-                $query->whereHas('product', function($q) use ($search) {
+                $query->whereHas('product', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%")
-                      ->orWhere('barcode', 'like', "%{$search}%");
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
                 });
             }
 
@@ -60,7 +90,7 @@ class StockController extends Controller
                 $query->outOfStock();
             }
 
-            $stocks = $query->orderBy('created_at', 'desc')
+            $stocks = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Transform the data
@@ -216,25 +246,63 @@ class StockController extends Controller
     }
 
     /**
-     * Get low stock alerts
+     * Get low stock alerts with pagination, sorting, search, and filters
      */
     public function lowStockAlerts(Request $request)
     {
         try {
+            $perPage = $request->input('per_page', 20);
             $branchId = $request->input('branch_id');
+            $urgency = $request->input('urgency');
+            $search = $request->input('search');
             $businessId = $request->user()->business_id;
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'quantity');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'quantity',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'quantity';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = Stock::with(['product.category', 'product.unit', 'branch'])
                 ->forBusiness($businessId)
                 ->lowStock();
 
+            // Branch filter
             if ($branchId) {
                 $query->forBranch($branchId);
             }
 
-            $lowStocks = $query->orderBy('quantity', 'asc')->get();
+            // Search filter (product name, SKU, or branch name)
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('product', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%");
+                    })->orWhereHas('branch', function ($bq) use ($search) {
+                        $bq->where('name', 'like', "%{$search}%");
+                    });
+                });
+            }
 
-            $alerts = $lowStocks->map(function ($stock) {
+            // Get paginated results
+            $lowStocksQuery = $query->orderBy($sortBy, $sortDirection);
+            $lowStocks = $lowStocksQuery->paginate($perPage);
+
+            // Transform the data and filter by urgency if needed
+            $transformedData = $lowStocks->getCollection()->map(function ($stock) {
                 return [
                     'id' => $stock->id,
                     'product' => [
@@ -255,7 +323,17 @@ class StockController extends Controller
                 ];
             });
 
-            return successResponse('Low stock alerts retrieved successfully', $alerts);
+            // Filter by urgency after transformation (since it's calculated)
+            if ($urgency) {
+                $transformedData = $transformedData->filter(function ($item) use ($urgency) {
+                    return $item['urgency'] === $urgency;
+                })->values();
+            }
+
+            // Update the collection
+            $lowStocks->setCollection($transformedData);
+
+            return successResponse('Low stock alerts retrieved successfully', $lowStocks);
         } catch (\Exception $e) {
             Log::error('Failed to retrieve low stock alerts', [
                 'error' => $e->getMessage()
@@ -283,6 +361,28 @@ class StockController extends Controller
             $perPage = $request->input('per_page', 50);
             $movementType = $request->input('movement_type');
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'quantity',
+                'previous_quantity',
+                'new_quantity',
+                'unit_cost',
+                'movement_type',
+                'created_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = StockMovement::with(['user', 'product', 'branch'])
                 ->forBusiness($businessId)
                 ->where('product_id', $request->product_id)
@@ -292,7 +392,7 @@ class StockController extends Controller
                 $query->byType($movementType);
             }
 
-            $movements = $query->orderBy('created_at', 'desc')
+            $movements = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Transform the data

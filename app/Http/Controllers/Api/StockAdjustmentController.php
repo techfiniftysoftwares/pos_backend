@@ -27,7 +27,30 @@ class StockAdjustmentController extends Controller
             $adjustmentType = $request->input('adjustment_type');
             $reason = $request->input('reason');
             $approved = $request->input('approved');
+            $search = $request->input('search');
             $businessId = $request->user()->business_id;
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'quantity_adjusted',
+                'before_quantity',
+                'after_quantity',
+                'cost_impact',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = StockAdjustment::with(['product', 'branch', 'adjustedBy', 'approvedBy'])
                 ->forBusiness($businessId);
@@ -56,7 +79,15 @@ class StockAdjustmentController extends Controller
                 }
             }
 
-            $adjustments = $query->orderBy('created_at', 'desc')
+            // Search filter (product name or SKU)
+            if ($search) {
+                $query->whereHas('product', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%");
+                });
+            }
+
+            $adjustments = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             $adjustments->getCollection()->transform(function ($adjustment) {

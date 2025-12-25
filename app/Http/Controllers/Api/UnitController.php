@@ -22,14 +22,38 @@ class UnitController extends Controller
             $isActive = $request->input('is_active');
             $businessId = $request->user()->business_id;
 
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'name');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            // Whitelist of allowed sortable columns to prevent SQL injection
+            $allowedSortColumns = [
+                'name',
+                'symbol',
+                'conversion_factor',
+                'is_active',
+                'products_count',
+                'created_at',
+                'updated_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'name';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
+
             $query = Unit::with(['baseUnit'])
+                ->withCount('products')
                 ->forBusiness($businessId);
 
             // Search filter
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('symbol', 'like', "%{$search}%");
+                        ->orWhere('symbol', 'like', "%{$search}%");
                 });
             }
 
@@ -38,7 +62,7 @@ class UnitController extends Controller
                 $query->where('is_active', (bool) $isActive);
             }
 
-            $units = $query->orderBy('name', 'asc')
+            $units = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             // Transform the data

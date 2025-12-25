@@ -26,7 +26,32 @@ class StockTransferController extends Controller
             $status = $request->input('status');
             $fromBranchId = $request->input('from_branch_id');
             $toBranchId = $request->input('to_branch_id');
+            $search = $request->input('search');
             $businessId = $request->user()->business_id;
+
+            // Sorting parameters
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            // Whitelist of allowed sortable columns
+            $allowedSortColumns = [
+                'transfer_number',
+                'transfer_date',
+                'expected_delivery_date',
+                'status',
+                'created_at',
+                'updated_at',
+                'approved_at',
+                'completed_at',
+            ];
+
+            // Validate sort column
+            if (!in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = StockTransfer::with(['fromBranch', 'toBranch', 'initiatedBy', 'items.product'])
                 ->forBusiness($businessId);
@@ -43,7 +68,20 @@ class StockTransferController extends Controller
                 $query->toBranch($toBranchId);
             }
 
-            $transfers = $query->orderBy('created_at', 'desc')
+            // Search filter (transfer number, branch names)
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('transfer_number', 'like', "%{$search}%")
+                        ->orWhereHas('fromBranch', function ($bq) use ($search) {
+                            $bq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('toBranch', function ($bq) use ($search) {
+                            $bq->where('name', 'like', "%{$search}%");
+                        });
+                });
+            }
+
+            $transfers = $query->orderBy($sortBy, $sortDirection)
                 ->paginate($perPage);
 
             $transfers->getCollection()->transform(function ($transfer) {
