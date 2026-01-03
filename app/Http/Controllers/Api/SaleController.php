@@ -645,10 +645,13 @@ class SaleController extends Controller
         }
 
         try {
+            $holdNumber = 'HOLD-' . date('YmdHis') . '-' . strtoupper(substr(uniqid(), -4));
+
             $heldSale = HeldSale::create([
                 'business_id' => $request->business_id,
                 'branch_id' => $request->branch_id,
                 'user_id' => Auth::id(),
+                'hold_number' => $holdNumber,
                 'sale_data' => $request->sale_data,
                 'notes' => $request->notes,
             ]);
