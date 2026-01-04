@@ -235,12 +235,12 @@ class InventoryStockPdfReportController extends Controller
     private function getValuationMethodDescription($method)
     {
         $descriptions = [
-            'fifo' => 'First In, First Out - Values inventory based on oldest costs',
-            'lifo' => 'Last In, First Out - Values inventory based on newest costs',
-            'weighted_average' => 'Weighted Average - Uses average cost of all units',
-            'standard_cost' => 'Standard Cost - Uses predetermined standard costs',
+            'fifo' => 'Premier Entré, Premier Sorti - Valorisation basée sur les coûts les plus anciens',
+            'lifo' => 'Dernier Entré, Premier Sorti - Valorisation basée sur les coûts les plus récents',
+            'weighted_average' => 'Coût Moyen Pondéré - Utilise le coût moyen de toutes les unités',
+            'standard_cost' => 'Coût Standard - Utilise des coûts standards prédéterminés',
         ];
-        return $descriptions[$method] ?? 'Standard inventory valuation';
+        return $descriptions[$method] ?? 'Valorisation standard des stocks';
     }
 
     /**
@@ -259,12 +259,12 @@ class InventoryStockPdfReportController extends Controller
             $success = $this->colors['success'];
 
             // ===== HEADER =====
-            $this->addHeader($pdf, 'INVENTORY VALUATION REPORT', $data, $matisse);
+            $this->addHeader($pdf, 'RAPPORT DE VALORISATION DES STOCKS', $data, $matisse);
 
             // ===== SUMMARY BOXES =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 7, 'VALUATION SUMMARY', 0, 1);
+            $pdf->Cell(0, 7, 'RESUME DE LA VALORISATION', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 65;
@@ -274,17 +274,17 @@ class InventoryStockPdfReportController extends Controller
             $y = $pdf->GetY();
 
             // Row 1
-            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL VALUATION', $data['currency'] . ' ' . number_format($data['summary']['total_valuation'], 2), $matisse);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL PRODUCTS', number_format($data['summary']['total_products']), $sun);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'TOTAL QUANTITY', number_format($data['summary']['total_quantity'], 1), $hippieBlue);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'AVG UNIT COST', $data['currency'] . ' ' . number_format($data['summary']['average_unit_cost'], 2), $success);
+            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'VALEUR TOTALE', $data['currency'] . ' ' . number_format($data['summary']['total_valuation'], 2), $matisse);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL PRODUITS', number_format($data['summary']['total_products']), $sun);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'QUANTITE TOTALE', number_format($data['summary']['total_quantity'], 1), $hippieBlue);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'COUT UNIT. MOY.', $data['currency'] . ' ' . number_format($data['summary']['average_unit_cost'], 2), $success);
 
             $pdf->SetY($y + $boxH + 8);
 
             // ===== VALUATION METHOD INFO =====
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-            $pdf->Cell(0, 6, 'VALUATION METHOD', 0, 1);
+            $pdf->Cell(0, 6, 'METHODE DE VALORISATION', 0, 1);
             $pdf->Ln(1);
 
             $pdf->SetFillColor(255, 250, 230);
@@ -292,7 +292,7 @@ class InventoryStockPdfReportController extends Controller
             $pdf->Rect(15, $pdf->GetY(), 270, 12, 'D');
             $pdf->SetFont('Arial', 'B', 9);
             $pdf->SetTextColor(0, 0, 0);
-            $pdf->Cell(270, 6, 'Method: ' . $data['method_breakdown']['method_used'], 0, 1, 'L');
+            $pdf->Cell(270, 6, 'Methode: ' . $data['method_breakdown']['method_used'], 0, 1, 'L');
             $pdf->SetFont('Arial', 'I', 8);
             $pdf->SetTextColor(100, 100, 100);
             $pdf->Cell(270, 6, $data['method_breakdown']['description'], 0, 1, 'L');
@@ -302,18 +302,18 @@ class InventoryStockPdfReportController extends Controller
             if ($data['category_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'VALUATION BY CATEGORY', 0, 1);
+                $pdf->Cell(0, 6, 'VALORISATION PAR CATEGORIE', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(80, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Products', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Avg Unit Cost', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Total Value (' . $data['currency'] . ')', 1, 1, 'C', true);
+                $pdf->Cell(80, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Produits', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Cout Unit. Moy.', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Valeur Totale (' . $data['currency'] . ')', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -335,7 +335,7 @@ class InventoryStockPdfReportController extends Controller
             if ($data['top_value_items']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'TOP 10 HIGHEST VALUE ITEMS', 0, 1);
+                $pdf->Cell(0, 6, 'TOP 10 ARTICLES A PLUS FORTE VALEUR', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
@@ -344,12 +344,12 @@ class InventoryStockPdfReportController extends Controller
 
                 $pdf->Cell(10, 8, '#', 1, 0, 'C', true);
                 $pdf->Cell(20, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Product Name', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Unit Cost', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Branch', 1, 0, 'C', true);
-                $pdf->Cell(20, 8, 'Total Value', 1, 1, 'C', true);
+                $pdf->Cell(70, 8, 'Nom du Produit', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Cout Unit.', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Succursale', 1, 0, 'C', true);
+                $pdf->Cell(20, 8, 'Valeur Totale', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -376,11 +376,11 @@ class InventoryStockPdfReportController extends Controller
             if ($data['stocks']->isEmpty()) {
                 $pdf->SetFont('Arial', 'I', 11);
                 $pdf->SetTextColor(128, 128, 128);
-                $pdf->Cell(0, 10, 'No inventory items found matching the criteria.', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'Aucun article en stock correspondant aux criteres.', 0, 1, 'C');
             } else {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'DETAILED INVENTORY VALUATION', 0, 1);
+                $pdf->Cell(0, 6, 'VALORISATION DETAILLEE DES STOCKS', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
@@ -388,13 +388,13 @@ class InventoryStockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 7);
 
                 $pdf->Cell(20, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Product Name', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Branch', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Unit Cost', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Unit', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Total Value', 1, 1, 'C', true);
+                $pdf->Cell(70, 8, 'Nom du Produit', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Succursale', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Cout Unit.', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Unite', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Valeur Totale', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 6);
                 $pdf->SetTextColor(0, 0, 0);
@@ -422,14 +422,14 @@ class InventoryStockPdfReportController extends Controller
                     $pdf->Ln(2);
                     $pdf->SetFont('Arial', 'I', 8);
                     $pdf->SetTextColor(100, 100, 100);
-                    $pdf->Cell(0, 5, 'Note: Showing first 50 items. Total items: ' . number_format($data['stocks']->count()), 0, 1, 'C');
+                    $pdf->Cell(0, 5, 'Note: Affichage des 50 premiers articles. Total articles: ' . number_format($data['stocks']->count()), 0, 1, 'C');
                 }
             }
 
             // ===== FOOTER =====
             $this->addFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-            $filename = 'inventory_valuation_report_' . date('Y-m-d') . '.pdf';
+            $filename = 'rapport_valorisation_stocks_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,
@@ -576,7 +576,13 @@ class InventoryStockPdfReportController extends Controller
                 ->orderBy('products.name', $sortOrder)
                 ->select('stock_adjustments.*');
         } else {
-            $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
+            // Map sort_by values to actual column names
+            $columnMap = [
+                'date' => 'created_at',
+                'quantity' => 'quantity_adjusted',
+                'value' => 'cost_impact',
+            ];
+            $orderColumn = $columnMap[$sortBy] ?? 'created_at';
             $query->orderBy($orderColumn, $sortOrder);
         }
 
@@ -666,12 +672,12 @@ class InventoryStockPdfReportController extends Controller
             $warning = $this->colors['warning'];
 
             // ===== HEADER =====
-            $this->addHeader($pdf, 'STOCK ADJUSTMENT REPORT', $data, $matisse);
+            $this->addHeader($pdf, 'RAPPORT D\'AJUSTEMENT DE STOCK', $data, $matisse);
 
             // ===== SUMMARY BOXES =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 7, 'ADJUSTMENT SUMMARY', 0, 1);
+            $pdf->Cell(0, 7, 'RESUME DES AJUSTEMENTS', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 65;
@@ -681,20 +687,20 @@ class InventoryStockPdfReportController extends Controller
             $y = $pdf->GetY();
 
             // Row 1 - 4 boxes
-            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL ADJUSTMENTS', number_format($data['summary']['total_adjustments']), $matisse);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'APPROVED', number_format($data['summary']['approved_count']), $success);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'PENDING', number_format($data['summary']['pending_count']), $warning);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'REJECTED', number_format($data['summary']['rejected_count']), $danger);
+            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL AJUSTEMENTS', number_format($data['summary']['total_adjustments']), $matisse);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'APPROUVES', number_format($data['summary']['approved_count']), $success);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EN ATTENTE', number_format($data['summary']['pending_count']), $warning);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'REJETES', number_format($data['summary']['rejected_count']), $danger);
 
             // Row 2 - 4 boxes
             $y += $boxH + $gap;
             $increaseText = number_format($data['summary']['increase_count']) . ' adj' . "\n" . '+' . number_format($data['summary']['total_increase_qty'], 1) . ' qty';
             $decreaseText = number_format($data['summary']['decrease_count']) . ' adj' . "\n" . '-' . number_format($data['summary']['total_decrease_qty'], 1) . ' qty';
 
-            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'INCREASES', number_format($data['summary']['increase_count']) . ' (' . number_format($data['summary']['total_increase_qty'], 0) . ')', $success);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'DECREASES', number_format($data['summary']['decrease_count']) . ' (' . number_format($data['summary']['total_decrease_qty'], 0) . ')', $danger);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'NET ADJUSTMENT', number_format($data['summary']['net_adjustment'], 1), $hippieBlue);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'COST IMPACT', $data['currency'] . ' ' . number_format($data['summary']['total_cost_impact'], 0), $sun);
+            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'AUGMENTATIONS', number_format($data['summary']['increase_count']) . ' (' . number_format($data['summary']['total_increase_qty'], 0) . ')', $success);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'DIMINUTIONS', number_format($data['summary']['decrease_count']) . ' (' . number_format($data['summary']['total_decrease_qty'], 0) . ')', $danger);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'AJUSTEMENT NET', number_format($data['summary']['net_adjustment'], 1), $hippieBlue);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'IMPACT COUT', $data['currency'] . ' ' . number_format($data['summary']['total_cost_impact'], 0), $sun);
 
             $pdf->SetY($y + $boxH + 8);
 
@@ -702,18 +708,18 @@ class InventoryStockPdfReportController extends Controller
             if ($data['reason_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'BREAKDOWN BY REASON', 0, 1);
+                $pdf->Cell(0, 6, 'REPARTITION PAR MOTIF', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(80, 8, 'Reason', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Count', 1, 0, 'C', true);
-                $pdf->Cell(45, 8, 'Total Qty Change', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Increases', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Decreases', 1, 1, 'C', true);
+                $pdf->Cell(80, 8, 'Motif', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Nombre', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Variation Qte Totale', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Augmentations', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Diminutions', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -735,16 +741,16 @@ class InventoryStockPdfReportController extends Controller
             if ($data['status_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'BREAKDOWN BY STATUS', 0, 1);
+                $pdf->Cell(0, 6, 'REPARTITION PAR STATUT', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(100, 8, 'Status', 1, 0, 'C', true);
-                $pdf->Cell(65, 8, 'Count', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Total Quantity', 1, 1, 'C', true);
+                $pdf->Cell(100, 8, 'Statut', 1, 0, 'C', true);
+                $pdf->Cell(65, 8, 'Nombre', 1, 0, 'C', true);
+                $pdf->Cell(70, 8, 'Quantite Totale', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -764,7 +770,7 @@ class InventoryStockPdfReportController extends Controller
             if ($data['top_adjusted_products']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
-                $pdf->Cell(0, 6, 'TOP 10 MOST ADJUSTED PRODUCTS', 0, 1);
+                $pdf->Cell(0, 6, 'TOP 10 PRODUITS LES PLUS AJUSTES', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
@@ -772,11 +778,11 @@ class InventoryStockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 8);
 
                 $pdf->Cell(10, 8, '#', 1, 0, 'C', true);
-                $pdf->Cell(80, 8, 'Product Name', 1, 0, 'C', true);
+                $pdf->Cell(80, 8, 'Nom du Produit', 1, 0, 'C', true);
                 $pdf->Cell(30, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Adj Count', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Net Change', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Total Qty', 1, 1, 'C', true);
+                $pdf->Cell(40, 8, 'Nb Ajust.', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Variation Nette', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Qte Totale', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -786,8 +792,8 @@ class InventoryStockPdfReportController extends Controller
                 foreach ($data['top_adjusted_products'] as $item) {
                     $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
                     $pdf->Cell(10, 6, $rank, 1, 0, 'C', $fill);
-                    $pdf->Cell(80, 6, substr($item['product']->name ?? 'Unknown', 0, 35), 1, 0, 'L', $fill);
-                    $pdf->Cell(30, 6, substr($item['product']->sku ?? 'N/A', 0, 12), 1, 0, 'C', $fill);
+                    $pdf->Cell(80, 6, substr(optional($item['product'])->name ?? 'Unknown', 0, 35), 1, 0, 'L', $fill);
+                    $pdf->Cell(30, 6, substr(optional($item['product'])->sku ?? 'N/A', 0, 12), 1, 0, 'C', $fill);
                     $pdf->Cell(40, 6, number_format($item['adjustment_count']), 1, 0, 'C', $fill);
                     $pdf->Cell(40, 6, number_format($item['net_change'], 1), 1, 0, 'R', $fill);
                     $pdf->Cell(35, 6, number_format($item['total_quantity_change'], 1), 1, 1, 'R', $fill);
@@ -801,11 +807,11 @@ class InventoryStockPdfReportController extends Controller
             if ($data['adjustments']->isEmpty()) {
                 $pdf->SetFont('Arial', 'I', 11);
                 $pdf->SetTextColor(128, 128, 128);
-                $pdf->Cell(0, 10, 'No stock adjustments found for this period.', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'Aucun ajustement de stock trouve pour cette periode.', 0, 1, 'C');
             } else {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'DETAILED ADJUSTMENT HISTORY', 0, 1);
+                $pdf->Cell(0, 6, 'HISTORIQUE DETAILLE DES AJUSTEMENTS', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
@@ -813,15 +819,15 @@ class InventoryStockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 7);
 
                 $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Product', 1, 0, 'C', true);
-                $pdf->Cell(28, 8, 'Branch', 1, 0, 'C', true);
-                $pdf->Cell(22, 8, 'Qty Change', 1, 0, 'C', true);
-                $pdf->Cell(20, 8, 'Before', 1, 0, 'C', true);
-                $pdf->Cell(20, 8, 'After', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Reason', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Status', 1, 0, 'C', true);
-                $pdf->Cell(28, 8, 'User', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Approved By', 1, 1, 'C', true);
+                $pdf->Cell(50, 8, 'Produit', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Succursale', 1, 0, 'C', true);
+                $pdf->Cell(22, 8, 'Var. Qte', 1, 0, 'C', true);
+                $pdf->Cell(20, 8, 'Avant', 1, 0, 'C', true);
+                $pdf->Cell(20, 8, 'Apres', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Motif', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Statut', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Utilisateur', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Approuve par', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 6);
                 $pdf->SetTextColor(0, 0, 0);
@@ -831,20 +837,20 @@ class InventoryStockPdfReportController extends Controller
                     $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
 
                     $date = $adjustment->created_at->format('m/d H:i');
-                    $productName = substr($adjustment->product->name ?? 'Unknown', 0, 22);
-                    $branchName = substr($adjustment->branch->name ?? 'N/A', 0, 14);
-                    $qtyChange = ($adjustment->quantity_change >= 0 ? '+' : '') . number_format($adjustment->quantity_change, 1);
+                    $productName = substr(optional($adjustment->product)->name ?? 'Unknown', 0, 22);
+                    $branchName = substr(optional($adjustment->branch)->name ?? 'N/A', 0, 14);
+                    $qtyChange = ($adjustment->quantity_adjusted >= 0 ? '+' : '') . number_format($adjustment->quantity_adjusted, 1);
                     $reason = substr(str_replace('_', ' ', $adjustment->reason ?? 'N/A'), 0, 15);
                     $status = ucfirst($adjustment->status ?? 'N/A');
-                    $userName = substr($adjustment->user->name ?? 'System', 0, 14);
-                    $approvedBy = substr($adjustment->approvedBy->name ?? '-', 0, 14);
+                    $userName = substr(optional($adjustment->adjustedBy)->name ?? 'Systeme', 0, 14);
+                    $approvedBy = substr(optional($adjustment->approvedBy)->name ?? '-', 0, 14);
 
                     $pdf->Cell(22, 6, $date, 1, 0, 'C', $fill);
                     $pdf->Cell(50, 6, $productName, 1, 0, 'L', $fill);
                     $pdf->Cell(28, 6, $branchName, 1, 0, 'L', $fill);
                     $pdf->Cell(22, 6, $qtyChange, 1, 0, 'R', $fill);
-                    $pdf->Cell(20, 6, number_format($adjustment->quantity_before ?? 0, 1), 1, 0, 'R', $fill);
-                    $pdf->Cell(20, 6, number_format($adjustment->quantity_after ?? 0, 1), 1, 0, 'R', $fill);
+                    $pdf->Cell(20, 6, number_format($adjustment->before_quantity ?? 0, 1), 1, 0, 'R', $fill);
+                    $pdf->Cell(20, 6, number_format($adjustment->after_quantity ?? 0, 1), 1, 0, 'R', $fill);
                     $pdf->Cell(30, 6, $reason, 1, 0, 'L', $fill);
                     $pdf->Cell(25, 6, $status, 1, 0, 'C', $fill);
                     $pdf->Cell(28, 6, $userName, 1, 0, 'L', $fill);
@@ -862,14 +868,14 @@ class InventoryStockPdfReportController extends Controller
                     $pdf->Ln(2);
                     $pdf->SetFont('Arial', 'I', 8);
                     $pdf->SetTextColor(100, 100, 100);
-                    $pdf->Cell(0, 5, 'Note: Showing first 50 adjustments. Total adjustments: ' . number_format($data['adjustments']->count()), 0, 1, 'C');
+                    $pdf->Cell(0, 5, 'Note: Affichage des 50 premiers ajustements. Total ajustements: ' . number_format($data['adjustments']->count()), 0, 1, 'C');
                 }
             }
 
             // ===== FOOTER =====
             $this->addFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-            $filename = 'stock_adjustment_report_' . date('Y-m-d') . '.pdf';
+            $filename = 'rapport_ajustement_stock_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,
@@ -909,7 +915,7 @@ class InventoryStockPdfReportController extends Controller
                 'search' => 'nullable|string',
                 'min_quantity' => 'nullable|numeric',
                 'include_cancelled' => 'nullable|boolean',
-                'sort_by' => 'nullable|in:date,quantity,product_name,status',
+                'sort_by' => 'nullable|in:date,quantity,value,product_name,status',
                 'sort_order' => 'nullable|in:asc,desc',
                 'currency_code' => 'nullable|string|size:3',
             ]);
@@ -1021,13 +1027,17 @@ class InventoryStockPdfReportController extends Controller
         $sortBy = $request->sort_by ?? 'date';
         $sortOrder = $request->sort_order ?? 'desc';
 
-        if ($sortBy === 'product_name') {
-            // Can't easily sort by product name when there are multiple items per transfer
-            $query->orderBy('created_at', $sortOrder);
-        } else {
-            $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
-            $query->orderBy($orderColumn, $sortOrder);
-        }
+        // Map sort_by values to actual column names
+        // Note: 'value' and 'quantity' are aggregated from items, so we fall back to date
+        $columnMap = [
+            'date' => 'created_at',
+            'status' => 'status',
+            'value' => 'created_at',      // Can't sort by value - it's aggregated from items
+            'quantity' => 'created_at',   // Can't sort by quantity - it's aggregated from items
+            'product_name' => 'created_at', // Can't sort by product name when multiple items
+        ];
+        $orderColumn = $columnMap[$sortBy] ?? 'created_at';
+        $query->orderBy($orderColumn, $sortOrder);
 
         $transfers = $query->get();
 
@@ -1208,12 +1218,12 @@ class InventoryStockPdfReportController extends Controller
             $info = $this->colors['info'];
 
             // ===== HEADER =====
-            $this->addHeader($pdf, 'STOCK TRANSFER REPORT', $data, $matisse);
+            $this->addHeader($pdf, 'RAPPORT DE TRANSFERT DE STOCK', $data, $matisse);
 
             // ===== SUMMARY BOXES =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 7, 'TRANSFER SUMMARY', 0, 1);
+            $pdf->Cell(0, 7, 'RESUME DES TRANSFERTS', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 65;
@@ -1223,18 +1233,18 @@ class InventoryStockPdfReportController extends Controller
             $y = $pdf->GetY();
 
             // Row 1 - 4 boxes
-            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL TRANSFERS', number_format($data['summary']['total_transfers']), $matisse);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'RECEIVED', number_format($data['summary']['received_count']), $success);
+            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL TRANSFERTS', number_format($data['summary']['total_transfers']), $matisse);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'RECUS', number_format($data['summary']['received_count']), $success);
             $sentCount = $data['summary']['sent_count'] + $data['summary']['approved_count'];
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'IN TRANSIT', number_format($sentCount), $info);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'PENDING', number_format($data['summary']['pending_count']), $warning);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EN TRANSIT', number_format($sentCount), $info);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'EN ATTENTE', number_format($data['summary']['pending_count']), $warning);
 
             // Row 2 - 4 boxes
             $y += $boxH + $gap;
-            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'QTY TRANSFERRED', number_format($data['summary']['total_quantity_transferred'], 1), $success);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'QTY IN TRANSIT', number_format($data['summary']['total_quantity_in_transit'], 1), $info);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'UNIQUE PRODUCTS', number_format($data['summary']['unique_products']), $hippieBlue);
-            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'TRANSFER VALUE', $data['currency'] . ' ' . number_format($data['summary']['total_transfer_value'], 0), $sun);
+            $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'QTE TRANSFEREE', number_format($data['summary']['total_quantity_transferred'], 1), $success);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'QTE EN TRANSIT', number_format($data['summary']['total_quantity_in_transit'], 1), $info);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'PRODUITS UNIQUES', number_format($data['summary']['unique_products']), $hippieBlue);
+            $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'VALEUR TRANSFERT', $data['currency'] . ' ' . number_format($data['summary']['total_transfer_value'], 0), $sun);
 
             $pdf->SetY($y + $boxH + 8);
 
@@ -1242,17 +1252,17 @@ class InventoryStockPdfReportController extends Controller
             if ($data['status_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'BREAKDOWN BY STATUS', 0, 1);
+                $pdf->Cell(0, 6, 'REPARTITION PAR STATUT', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(80, 8, 'Status', 1, 0, 'C', true);
-                $pdf->Cell(45, 8, 'Count', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Total Quantity', 1, 0, 'C', true);
-                $pdf->Cell(60, 8, 'Percentage', 1, 1, 'C', true);
+                $pdf->Cell(80, 8, 'Statut', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Nombre', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Quantite Totale', 1, 0, 'C', true);
+                $pdf->Cell(60, 8, 'Pourcentage', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1273,7 +1283,7 @@ class InventoryStockPdfReportController extends Controller
             if ($data['route_analysis']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'TOP 10 MOST ACTIVE TRANSFER ROUTES', 0, 1);
+                $pdf->Cell(0, 6, 'TOP 10 ROUTES DE TRANSFERT LES PLUS ACTIVES', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
@@ -1282,10 +1292,10 @@ class InventoryStockPdfReportController extends Controller
 
                 $pdf->Cell(10, 8, '#', 1, 0, 'C', true);
                 $pdf->Cell(75, 8, 'Route', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Transfers', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Total Qty', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Completed', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'In Transit', 1, 1, 'C', true);
+                $pdf->Cell(35, 8, 'Transferts', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Qte Totale', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Termines', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'En Transit', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1310,7 +1320,7 @@ class InventoryStockPdfReportController extends Controller
             if ($data['top_transferred_products']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
-                $pdf->Cell(0, 6, 'TOP 10 MOST TRANSFERRED PRODUCTS', 0, 1);
+                $pdf->Cell(0, 6, 'TOP 10 PRODUITS LES PLUS TRANSFERES', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
@@ -1318,12 +1328,12 @@ class InventoryStockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 8);
 
                 $pdf->Cell(10, 8, '#', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Product Name', 1, 0, 'C', true);
+                $pdf->Cell(70, 8, 'Nom du Produit', 1, 0, 'C', true);
                 $pdf->Cell(30, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Transfers', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Total Qty', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Completed', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Pending', 1, 1, 'C', true);
+                $pdf->Cell(35, 8, 'Transferts', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Qte Totale', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Termines', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'En Attente', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1349,24 +1359,24 @@ class InventoryStockPdfReportController extends Controller
             if ($data['sending_branch_performance']->isNotEmpty() || $data['receiving_branch_performance']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($success[0], $success[1], $success[2]);
-                $pdf->Cell(0, 6, 'BRANCH PERFORMANCE ANALYSIS', 0, 1);
+                $pdf->Cell(0, 6, 'ANALYSE DE PERFORMANCE DES SUCCURSALES', 0, 1);
                 $pdf->Ln(1);
 
                 // Sending Performance
                 if ($data['sending_branch_performance']->isNotEmpty()) {
                     $pdf->SetFont('Arial', 'B', 9);
                     $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                    $pdf->Cell(0, 5, 'Top Sending Branches', 0, 1);
+                    $pdf->Cell(0, 5, 'Top Succursales Expediteurs', 0, 1);
                     $pdf->Ln(1);
 
                     $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                     $pdf->SetTextColor(255, 255, 255);
                     $pdf->SetFont('Arial', 'B', 8);
 
-                    $pdf->Cell(70, 7, 'Branch Name', 1, 0, 'C', true);
-                    $pdf->Cell(40, 7, 'Total Sent', 1, 0, 'C', true);
-                    $pdf->Cell(45, 7, 'Quantity Sent', 1, 0, 'C', true);
-                    $pdf->Cell(40, 7, 'Completed', 1, 1, 'C', true);
+                    $pdf->Cell(70, 7, 'Nom de la Succursale', 1, 0, 'C', true);
+                    $pdf->Cell(40, 7, 'Total Envoyes', 1, 0, 'C', true);
+                    $pdf->Cell(45, 7, 'Quantite Envoyee', 1, 0, 'C', true);
+                    $pdf->Cell(40, 7, 'Termines', 1, 1, 'C', true);
 
                     $pdf->SetFont('Arial', '', 7);
                     $pdf->SetTextColor(0, 0, 0);
@@ -1387,17 +1397,17 @@ class InventoryStockPdfReportController extends Controller
                 if ($data['receiving_branch_performance']->isNotEmpty()) {
                     $pdf->SetFont('Arial', 'B', 9);
                     $pdf->SetTextColor($success[0], $success[1], $success[2]);
-                    $pdf->Cell(0, 5, 'Top Receiving Branches', 0, 1);
+                    $pdf->Cell(0, 5, 'Top Succursales Recepteurs', 0, 1);
                     $pdf->Ln(1);
 
                     $pdf->SetFillColor($success[0], $success[1], $success[2]);
                     $pdf->SetTextColor(255, 255, 255);
                     $pdf->SetFont('Arial', 'B', 8);
 
-                    $pdf->Cell(70, 7, 'Branch Name', 1, 0, 'C', true);
-                    $pdf->Cell(40, 7, 'Total Received', 1, 0, 'C', true);
-                    $pdf->Cell(45, 7, 'Quantity Received', 1, 0, 'C', true);
-                    $pdf->Cell(40, 7, 'Completed', 1, 1, 'C', true);
+                    $pdf->Cell(70, 7, 'Nom de la Succursale', 1, 0, 'C', true);
+                    $pdf->Cell(40, 7, 'Total Recus', 1, 0, 'C', true);
+                    $pdf->Cell(45, 7, 'Quantite Recue', 1, 0, 'C', true);
+                    $pdf->Cell(40, 7, 'Termines', 1, 1, 'C', true);
 
                     $pdf->SetFont('Arial', '', 7);
                     $pdf->SetTextColor(0, 0, 0);
@@ -1419,13 +1429,13 @@ class InventoryStockPdfReportController extends Controller
             if ($data['transfers']->isEmpty()) {
                 $pdf->SetFont('Arial', 'I', 11);
                 $pdf->SetTextColor(128, 128, 128);
-                $pdf->Cell(0, 10, 'No stock transfers found for this period.', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'Aucun transfert de stock trouve pour cette periode.', 0, 1, 'C');
             } else {
                 $pdf->AddPage();
 
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'DETAILED TRANSFER HISTORY', 0, 1);
+                $pdf->Cell(0, 6, 'HISTORIQUE DETAILLE DES TRANSFERTS', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
@@ -1433,13 +1443,13 @@ class InventoryStockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 7);
 
                 $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(48, 8, 'Product', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'From Branch', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'To Branch', 1, 0, 'C', true);
-                $pdf->Cell(22, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Status', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Approved By', 1, 1, 'C', true);
+                $pdf->Cell(48, 8, 'Produit', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'De Succursale', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Vers Succursale', 1, 0, 'C', true);
+                $pdf->Cell(22, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Statut', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Utilisateur', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Approuve par', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 6);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1449,18 +1459,29 @@ class InventoryStockPdfReportController extends Controller
                     $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
 
                     $date = $transfer->created_at->format('m/d H:i');
-                    $productName = substr($transfer->product->name ?? 'Unknown', 0, 22);
-                    $fromBranch = substr($transfer->fromBranch->name ?? 'N/A', 0, 18);
-                    $toBranch = substr($transfer->toBranch->name ?? 'N/A', 0, 18);
+
+                    $itemCount = $transfer->items->count();
+                    $firstItem = $transfer->items->first();
+                    $productName = 'No Items';
+
+                    if ($itemCount === 1) {
+                        $productName = substr(optional($firstItem->product)->name ?? 'Inconnu', 0, 22);
+                    } elseif ($itemCount > 1) {
+                        $productName = 'Multiple (' . $itemCount . ')';
+                    }
+
+                    $fromBranch = substr(optional($transfer->fromBranch)->name ?? 'N/A', 0, 18);
+                    $toBranch = substr(optional($transfer->toBranch)->name ?? 'N/A', 0, 18);
                     $status = ucfirst($transfer->status ?? 'N/A');
-                    $userName = substr($transfer->user->name ?? 'System', 0, 15);
-                    $approvedBy = substr($transfer->approvedBy->name ?? '-', 0, 15);
+                    $userName = substr(optional($transfer->initiatedBy)->name ?? 'Systeme', 0, 15);
+                    $approvedBy = substr(optional($transfer->approvedBy)->name ?? '-', 0, 15);
+                    $quantity = $transfer->items->sum('quantity_sent');
 
                     $pdf->Cell(22, 6, $date, 1, 0, 'C', $fill);
                     $pdf->Cell(48, 6, $productName, 1, 0, 'L', $fill);
                     $pdf->Cell(35, 6, $fromBranch, 1, 0, 'L', $fill);
                     $pdf->Cell(35, 6, $toBranch, 1, 0, 'L', $fill);
-                    $pdf->Cell(22, 6, number_format($transfer->quantity, 1), 1, 0, 'R', $fill);
+                    $pdf->Cell(22, 6, number_format($quantity, 1), 1, 0, 'R', $fill);
                     $pdf->Cell(25, 6, $status, 1, 0, 'C', $fill);
                     $pdf->Cell(30, 6, $userName, 1, 0, 'L', $fill);
                     $pdf->Cell(30, 6, $approvedBy, 1, 1, 'L', $fill);
@@ -1477,14 +1498,14 @@ class InventoryStockPdfReportController extends Controller
                     $pdf->Ln(2);
                     $pdf->SetFont('Arial', 'I', 8);
                     $pdf->SetTextColor(100, 100, 100);
-                    $pdf->Cell(0, 5, 'Note: Showing first 100 transfers. Total transfers: ' . number_format($data['transfers']->count()), 0, 1, 'C');
+                    $pdf->Cell(0, 5, 'Note: Affichage des 100 premiers transferts. Total transferts: ' . number_format($data['transfers']->count()), 0, 1, 'C');
                 }
             }
 
             // ===== FOOTER =====
             $this->addFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], null);
 
-            $filename = 'stock_transfer_report_' . date('Y-m-d') . '.pdf';
+            $filename = 'rapport_transfert_stock_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,
@@ -1522,7 +1543,7 @@ class InventoryStockPdfReportController extends Controller
         if (isset($data['valuation_date'])) {
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
-            $pdf->Cell(0, 6, 'As of ' . date('F d, Y', strtotime($data['valuation_date'])), 0, 1, 'C');
+            $pdf->Cell(0, 6, 'Au ' . date('d F Y', strtotime($data['valuation_date'])), 0, 1, 'C');
         } else {
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
@@ -1532,11 +1553,11 @@ class InventoryStockPdfReportController extends Controller
 
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(100, 100, 100);
-        $filterText = 'All Records';
+        $filterText = 'Tous les Enregistrements';
         if (isset($data['branch']) && $data['branch']) {
-            $filterText = 'Branch: ' . $data['branch']->name;
+            $filterText = 'Succursale: ' . $data['branch']->name;
         }
-        $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
+        $pdf->Cell(0, 5, 'Filtre: ' . $filterText, 0, 1, 'C');
         $pdf->Ln(8);
     }
 
@@ -1575,9 +1596,9 @@ class InventoryStockPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'I', 8);
         $pdf->SetTextColor(120, 120, 120);
-        $pdf->Cell(0, 4, 'Generated by: ' . $generatedBy . ' | ' . $generatedAt, 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Genere par: ' . $generatedBy . ' | ' . $generatedAt, 0, 1, 'C');
         $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-        $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
     }
 
     /**
@@ -1590,13 +1611,13 @@ class InventoryStockPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 7);
 
         $pdf->Cell(20, 8, 'SKU', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Product Name', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Category', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Branch', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Unit Cost', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Unit', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Total Value', 1, 1, 'C', true);
+        $pdf->Cell(70, 8, 'Nom du Produit', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Categorie', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'Succursale', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Quantite', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Cout Unit.', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Unite', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Valeur Totale', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 6);
         $pdf->SetTextColor(0, 0, 0);
@@ -1612,15 +1633,15 @@ class InventoryStockPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 7);
 
         $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(50, 8, 'Product', 1, 0, 'C', true);
-        $pdf->Cell(28, 8, 'Branch', 1, 0, 'C', true);
-        $pdf->Cell(22, 8, 'Qty Change', 1, 0, 'C', true);
-        $pdf->Cell(20, 8, 'Before', 1, 0, 'C', true);
-        $pdf->Cell(20, 8, 'After', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Reason', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Status', 1, 0, 'C', true);
-        $pdf->Cell(28, 8, 'User', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Approved By', 1, 1, 'C', true);
+        $pdf->Cell(50, 8, 'Produit', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Succursale', 1, 0, 'C', true);
+        $pdf->Cell(22, 8, 'Var. Qte', 1, 0, 'C', true);
+        $pdf->Cell(20, 8, 'Avant', 1, 0, 'C', true);
+        $pdf->Cell(20, 8, 'Apres', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Motif', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Statut', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Utilisateur', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Approuve par', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 6);
         $pdf->SetTextColor(0, 0, 0);
@@ -1636,13 +1657,13 @@ class InventoryStockPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 7);
 
         $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(48, 8, 'Product', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'From Branch', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'To Branch', 1, 0, 'C', true);
-        $pdf->Cell(22, 8, 'Quantity', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Status', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Approved By', 1, 1, 'C', true);
+        $pdf->Cell(48, 8, 'Produit', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'De Succursale', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'Vers Succursale', 1, 0, 'C', true);
+        $pdf->Cell(22, 8, 'Quantite', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Statut', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Utilisateur', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Approuve par', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 6);
         $pdf->SetTextColor(0, 0, 0);

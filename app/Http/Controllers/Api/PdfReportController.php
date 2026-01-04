@@ -226,7 +226,7 @@ class PdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'DAILY SALES REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DES VENTES QUOTIDIENNES', $data, $primary);
 
         // SUMMARY METRICS
         $this->addBeautifulSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
@@ -247,7 +247,7 @@ class PdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'daily_sales_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_ventes_quotidiennes_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -375,7 +375,7 @@ class PdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'SALES SUMMARY REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT RESUME DES VENTES', $data, $primary);
 
         // KEY METRICS (LARGE BOXES) - Reduced spacing
         $this->addCompactExecutiveSummaryBoxes($pdf, $data['metrics'], $data['currency'], $primary, $accent);
@@ -389,7 +389,7 @@ class PdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'sales_summary_' . date('Y-m-d') . '.pdf';
+        $filename = 'resume_ventes_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -407,7 +407,7 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'KEY PERFORMANCE INDICATORS', 0, 1);
+        $pdf->Cell(0, 6, 'INDICATEURS CLES DE PERFORMANCE', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 90;
@@ -417,13 +417,13 @@ class PdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL REVENUE', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'From ' . $metrics['total_sales'] . ' transactions', $primary);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'AVERAGE SALE', $currency . ' ' . number_format($metrics['avg_sale_value'], 2), 'Per transaction', $accent);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'REVENU TOTAL', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'De ' . $metrics['total_sales'] . ' transactions', $primary);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'VENTE MOYENNE', $currency . ' ' . number_format($metrics['avg_sale_value'], 2), 'Par transaction', $accent);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH SALES', number_format($metrics['cash_sales']) . ' transactions', $currency . ' ' . number_format($metrics['cash_amount'], 2), $this->colors['success']);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'CREDIT SALES', number_format($metrics['credit_sales']) . ' transactions', $currency . ' ' . number_format($metrics['credit_amount'], 2), $this->colors['warning']);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'VENTES ESPECES', number_format($metrics['cash_sales']) . ' transactions', $currency . ' ' . number_format($metrics['cash_amount'], 2), $this->colors['success']);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'VENTES CREDIT', number_format($metrics['credit_sales']) . ' transactions', $currency . ' ' . number_format($metrics['credit_amount'], 2), $this->colors['warning']);
 
         $pdf->SetY($y + $boxH + 6);
     }
@@ -439,7 +439,7 @@ class PdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'DAILY BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 6, 'REPARTITION JOURNALIERE', 0, 1);
         $pdf->Ln(1);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
@@ -448,7 +448,7 @@ class PdfReportController extends Controller
 
         $pdf->Cell(70, 7, 'Date', 1, 0, 'C', true);
         $pdf->Cell(55, 7, 'Transactions', 1, 0, 'C', true);
-        $pdf->Cell(65, 7, 'Total Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(65, 7, 'Montant Total (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -472,16 +472,16 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 6, 'PAYMENT TYPE ANALYSIS', 0, 1);
+        $pdf->Cell(0, 6, 'ANALYSE PAR TYPE DE PAIEMENT', 0, 1);
         $pdf->Ln(1);
 
         $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(63, 7, 'Payment Type', 1, 0, 'C', true);
+        $pdf->Cell(63, 7, 'Type de Paiement', 1, 0, 'C', true);
         $pdf->Cell(63, 7, 'Transactions', 1, 0, 'C', true);
-        $pdf->Cell(64, 7, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(64, 7, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -535,7 +535,7 @@ class PdfReportController extends Controller
         // Subtitle
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(100, 100, 100);
-        $pdf->Cell(0, 5, 'Filters: All Sales', 0, 1, 'C');
+        $pdf->Cell(0, 5, 'Filtres: Toutes les Ventes', 0, 1, 'C');
 
         $pdf->Ln(8);
     }
@@ -547,7 +547,7 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'SUMMARY OVERVIEW', 0, 1);
+        $pdf->Cell(0, 7, 'RESUME', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -557,17 +557,17 @@ class PdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL SALES', number_format($summary['total_sales']), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL REVENUE', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'AVG SALE', $currency . ' ' . number_format($summary['average_sale'], 2), $this->colors['hippie_blue']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'ITEMS SOLD', number_format($summary['total_items_sold']), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL VENTES', number_format($summary['total_sales']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'REVENU TOTAL', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'VENTE MOY.', $currency . ' ' . number_format($summary['average_sale'], 2), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'ARTICLES VENDUS', number_format($summary['total_items_sold']), $this->colors['success']);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH SALES', number_format($summary['cash_sales_count']) . ' (' . $currency . number_format($summary['cash_sales_amount'], 0) . ')', $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CREDIT SALES', number_format($summary['credit_sales_count']) . ' (' . $currency . number_format($summary['credit_sales_amount'], 0) . ')', $this->colors['warning']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'TAX COLLECTED', $currency . ' ' . number_format($summary['total_tax'], 2), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'DISCOUNTS', $currency . ' ' . number_format($summary['total_discount'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'VENTES ESPECES', number_format($summary['cash_sales_count']) . ' (' . $currency . number_format($summary['cash_sales_amount'], 0) . ')', $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'VENTES CREDIT', number_format($summary['credit_sales_count']) . ' (' . $currency . number_format($summary['credit_sales_amount'], 0) . ')', $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'TAXES COLLECTEES', $currency . ' ' . number_format($summary['total_tax'], 2), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'REMISES', $currency . ' ' . number_format($summary['total_discount'], 2), $this->colors['danger']);
 
         $pdf->SetY($y + $boxH + 8);
     }
@@ -579,7 +579,7 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'KEY PERFORMANCE INDICATORS', 0, 1);
+        $pdf->Cell(0, 7, 'INDICATEURS CLES DE PERFORMANCE', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 90;
@@ -589,13 +589,13 @@ class PdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL REVENUE', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'From ' . $metrics['total_sales'] . ' transactions', $primary);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'AVERAGE SALE', $currency . ' ' . number_format($metrics['avg_sale_value'], 2), 'Per transaction', $accent);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'REVENU TOTAL', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'De ' . $metrics['total_sales'] . ' transactions', $primary);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'VENTE MOYENNE', $currency . ' ' . number_format($metrics['avg_sale_value'], 2), 'Par transaction', $accent);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH SALES', number_format($metrics['cash_sales']) . ' transactions', $currency . ' ' . number_format($metrics['cash_amount'], 2), $this->colors['success']);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'CREDIT SALES', number_format($metrics['credit_sales']) . ' transactions', $currency . ' ' . number_format($metrics['credit_amount'], 2), $this->colors['warning']);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'VENTES ESPECES', number_format($metrics['cash_sales']) . ' transactions', $currency . ' ' . number_format($metrics['cash_amount'], 2), $this->colors['success']);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'VENTES CREDIT', number_format($metrics['credit_sales']) . ' transactions', $currency . ' ' . number_format($metrics['credit_amount'], 2), $this->colors['warning']);
 
         $pdf->SetY($y + $boxH + 8);
     }
@@ -667,7 +667,7 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'PAYMENT METHOD BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 7, 'REPARTITION PAR MODE DE PAIEMENT', 0, 1);
         $pdf->Ln(2);
 
         $tableWidth = 280; // Same as card width
@@ -675,9 +675,9 @@ class PdfReportController extends Controller
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(140, 8, 'Payment Method', 1, 0, 'C', true);
+        $pdf->Cell(140, 8, 'Mode de Paiement', 1, 0, 'C', true);
         $pdf->Cell(70, 8, 'Transactions', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Total Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(70, 8, 'Montant Total (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(0, 0, 0);
@@ -701,7 +701,7 @@ class PdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 7, 'TOP 10 SELLING PRODUCTS', 0, 1);
+        $pdf->Cell(0, 7, 'TOP 10 PRODUITS VENDUS', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
@@ -709,9 +709,9 @@ class PdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 9);
 
         $pdf->Cell(15, 8, '#', 1, 0, 'C', true);
-        $pdf->Cell(155, 8, 'Product Name', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Qty Sold', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Revenue (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(155, 8, 'Nom du Produit', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Qte Vendue', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Revenu (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -739,27 +739,27 @@ class PdfReportController extends Controller
         if ($sales->isEmpty()) {
             $pdf->SetFont('Arial', 'I', 11);
             $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No sales transactions found for this period.', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'Aucune transaction de vente trouvee pour cette periode.', 0, 1, 'C');
             return;
         }
 
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'SALES DETAILS', 0, 1);
+        $pdf->Cell(0, 7, 'DETAILS DES VENTES', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(25, 8, 'Sale No.', 1, 0, 'C', true);
-        $pdf->Cell(28, 8, 'Date/Time', 1, 0, 'C', true);
-        $pdf->Cell(43, 8, 'Customer', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Cashier', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'N Vente', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Date/Heure', 1, 0, 'C', true);
+        $pdf->Cell(43, 8, 'Client', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Caissier', 1, 0, 'C', true);
         $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(27, 8, 'Status', 1, 0, 'C', true);
-        $pdf->Cell(22, 8, 'Items', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(27, 8, 'Statut', 1, 0, 'C', true);
+        $pdf->Cell(22, 8, 'Articles', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -770,7 +770,7 @@ class PdfReportController extends Controller
 
             $saleNum = substr($sale->sale_number, -8);
             $dateTime = $sale->completed_at ? $sale->completed_at->format('m/d H:i') : $sale->created_at->format('m/d H:i');
-            $customer = $sale->customer ? substr($sale->customer->name, 0, 20) : 'Walk-in';
+            $customer = $sale->customer ? substr($sale->customer->name, 0, 20) : 'Client de passage';
             $cashier = substr($sale->cashier->name ?? 'N/A', 0, 20);
 
             $pdf->Cell(25, 7, $saleNum, 1, 0, 'C', $fill);
@@ -790,14 +790,14 @@ class PdfReportController extends Controller
                 $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
-                $pdf->Cell(25, 8, 'Sale No.', 1, 0, 'C', true);
-                $pdf->Cell(28, 8, 'Date/Time', 1, 0, 'C', true);
-                $pdf->Cell(43, 8, 'Customer', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Cashier', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'N Vente', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Date/Heure', 1, 0, 'C', true);
+                $pdf->Cell(43, 8, 'Client', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Caissier', 1, 0, 'C', true);
                 $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-                $pdf->Cell(27, 8, 'Status', 1, 0, 'C', true);
-                $pdf->Cell(22, 8, 'Items', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+                $pdf->Cell(27, 8, 'Statut', 1, 0, 'C', true);
+                $pdf->Cell(22, 8, 'Articles', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Montant (' . $currency . ')', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }

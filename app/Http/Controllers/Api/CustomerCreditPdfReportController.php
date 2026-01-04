@@ -156,7 +156,7 @@ class CustomerCreditPdfReportController extends Controller
         $danger = $this->colors['danger'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'CUSTOMER DEBT REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DE DETTE CLIENT', $data, $primary);
 
         // CUSTOMER INFO
         $this->addCustomerInfoBox($pdf, $data['customer'], $data['summary'], $data['currency'], $primary, $danger);
@@ -170,7 +170,7 @@ class CustomerCreditPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'customer_debt_report_' . $data['customer']->customer_number . '_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_dette_client_' . $data['customer']->customer_number . '_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -325,21 +325,21 @@ class CustomerCreditPdfReportController extends Controller
         $danger = $this->colors['danger'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'CREDIT AGING REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT ANCIENNETE DES CREDITS', $data, $primary);
 
         // SUMMARY BOXES
         $this->addAgingSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $warning, $danger);
 
         // AGING BUCKETS
-        $this->addAgingBucket($pdf, 'CURRENT (0-30 DAYS)', $data['aging']['current'], $data['currency'], $this->colors['success']);
-        $this->addAgingBucket($pdf, '31-60 DAYS', $data['aging']['days_31_60'], $data['currency'], $warning);
-        $this->addAgingBucket($pdf, '61-90 DAYS', $data['aging']['days_61_90'], $data['currency'], $this->colors['sun']);
-        $this->addAgingBucket($pdf, 'OVER 90 DAYS', $data['aging']['over_90'], $data['currency'], $danger);
+        $this->addAgingBucket($pdf, 'ACTUEL (0-30 JOURS)', $data['aging']['current'], $data['currency'], $this->colors['success']);
+        $this->addAgingBucket($pdf, '31-60 JOURS', $data['aging']['days_31_60'], $data['currency'], $warning);
+        $this->addAgingBucket($pdf, '61-90 JOURS', $data['aging']['days_61_90'], $data['currency'], $this->colors['sun']);
+        $this->addAgingBucket($pdf, 'PLUS DE 90 JOURS', $data['aging']['over_90'], $data['currency'], $danger);
 
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'credit_aging_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_anciennete_credits_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -501,7 +501,7 @@ class CustomerCreditPdfReportController extends Controller
         $danger = $this->colors['danger'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'OUTSTANDING CREDITS REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DES CREDITS EN COURS', $data, $primary);
 
         // SUMMARY BOXES
         $this->addOutstandingSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $danger);
@@ -512,7 +512,7 @@ class CustomerCreditPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'outstanding_credits_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_credits_en_cours_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -534,7 +534,7 @@ class CustomerCreditPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'CUSTOMER INFORMATION', 0, 1);
+        $pdf->Cell(0, 6, 'INFORMATIONS CLIENT', 0, 1);
         $pdf->Ln(2);
 
         // Draw box
@@ -548,19 +548,19 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetTextColor(0, 0, 0);
         $pdf->SetXY(20, $y);
-        $pdf->Cell(40, 5, 'Customer Number:', 0, 0);
+        $pdf->Cell(40, 5, 'Numero Client:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, $customer->customer_number, 0, 1);
 
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(20, $y + 6);
-        $pdf->Cell(40, 5, 'Customer Name:', 0, 0);
+        $pdf->Cell(40, 5, 'Nom du Client:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, $customer->name, 0, 1);
 
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(20, $y + 12);
-        $pdf->Cell(40, 5, 'Phone:', 0, 0);
+        $pdf->Cell(40, 5, 'Telephone:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, $customer->phone ?? 'N/A', 0, 1);
 
@@ -572,20 +572,20 @@ class CustomerCreditPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(20, $y + 24);
-        $pdf->Cell(40, 5, 'Customer Type:', 0, 0);
+        $pdf->Cell(40, 5, 'Type de Client:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, ucfirst($customer->customer_type), 0, 1);
 
         // Right column - Financial info
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(110, $y);
-        $pdf->Cell(40, 5, 'Credit Limit:', 0, 0);
+        $pdf->Cell(40, 5, 'Limite de Credit:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, $currency . ' ' . number_format($summary['credit_limit'], 2), 0, 1);
 
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(110, $y + 6);
-        $pdf->Cell(40, 5, 'Current Balance:', 0, 0);
+        $pdf->Cell(40, 5, 'Solde Actuel:', 0, 0);
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
         $pdf->Cell(0, 5, $currency . ' ' . number_format($summary['current_balance'], 2), 0, 1);
@@ -593,7 +593,7 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->SetTextColor(0, 0, 0);
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->SetXY(110, $y + 12);
-        $pdf->Cell(40, 5, 'Available Credit:', 0, 0);
+        $pdf->Cell(40, 5, 'Credit Disponible:', 0, 0);
         $pdf->SetFont('Arial', '', 9);
         $pdf->Cell(0, 5, $currency . ' ' . number_format($summary['available_credit'], 2), 0, 1);
 
@@ -607,7 +607,7 @@ class CustomerCreditPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'TRANSACTION SUMMARY', 0, 1);
+        $pdf->Cell(0, 6, 'RESUME DES TRANSACTIONS', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 90;
@@ -617,12 +617,12 @@ class CustomerCreditPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL SALES', $currency . ' ' . number_format($summary['total_sales'], 2), $this->colors['danger']);
-        $this->drawMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'TOTAL PAYMENTS', $currency . ' ' . number_format($summary['total_payments'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL VENTES', $currency . ' ' . number_format($summary['total_sales'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'TOTAL PAIEMENTS', $currency . ' ' . number_format($summary['total_payments'], 2), $this->colors['success']);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'ADJUSTMENTS', $currency . ' ' . number_format($summary['total_adjustments'], 2), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'AJUSTEMENTS', $currency . ' ' . number_format($summary['total_adjustments'], 2), $this->colors['warning']);
         $this->drawMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'TRANSACTIONS', number_format($summary['transaction_count']), $primary);
 
         $pdf->SetY($y + $boxH + 8);
@@ -636,13 +636,13 @@ class CustomerCreditPdfReportController extends Controller
         if ($transactions->isEmpty()) {
             $pdf->SetFont('Arial', 'I', 11);
             $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No transactions found for this period.', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'Aucune transaction trouvee pour cette periode.', 0, 1, 'C');
             return;
         }
 
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'TRANSACTION DETAILS', 0, 1);
+        $pdf->Cell(0, 6, 'DETAILS DES TRANSACTIONS', 0, 1);
         $pdf->Ln(2);
 
         // Table header
@@ -653,10 +653,10 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
         $pdf->Cell(32, 8, 'Reference', 1, 0, 'C', true);
         $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Amount (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(28, 8, 'Payment Method', 1, 0, 'C', true);
-        $pdf->Cell(23, 8, 'Processed By', 1, 1, 'C', true);
+        $pdf->Cell(30, 8, 'Montant (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Mode Paiement', 1, 0, 'C', true);
+        $pdf->Cell(23, 8, 'Traite par', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -685,10 +685,10 @@ class CustomerCreditPdfReportController extends Controller
                 $pdf->Cell(22, 8, 'Date', 1, 0, 'C', true);
                 $pdf->Cell(32, 8, 'Reference', 1, 0, 'C', true);
                 $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Amount (' . $currency . ')', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-                $pdf->Cell(28, 8, 'Payment Method', 1, 0, 'C', true);
-                $pdf->Cell(23, 8, 'Processed By', 1, 1, 'C', true);
+                $pdf->Cell(30, 8, 'Montant (' . $currency . ')', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Mode Paiement', 1, 0, 'C', true);
+                $pdf->Cell(23, 8, 'Traite par', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -702,7 +702,7 @@ class CustomerCreditPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'AGING SUMMARY', 0, 1);
+        $pdf->Cell(0, 6, 'RESUME ANCIENNETE', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -774,7 +774,7 @@ class CustomerCreditPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->SetTextColor($color[0], $color[1], $color[2]);
-        $pdf->Cell(0, 6, $title . ' (' . count($customers) . ' customers)', 0, 1);
+        $pdf->Cell(0, 6, $title . ' (' . count($customers) . ' clients)', 0, 1);
         $pdf->Ln(1);
 
         // Table header
@@ -782,13 +782,13 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(25, 7, 'Cust. No.', 1, 0, 'C', true);
-        $pdf->Cell(60, 7, 'Customer Name', 1, 0, 'C', true);
-        $pdf->Cell(35, 7, 'Phone', 1, 0, 'C', true);
-        $pdf->Cell(40, 7, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(35, 7, 'Credit Limit', 1, 0, 'C', true);
-        $pdf->Cell(25, 7, 'Days Old', 1, 0, 'C', true);
-        $pdf->Cell(30, 7, 'Last Sale', 1, 1, 'C', true);
+        $pdf->Cell(25, 7, 'N Client', 1, 0, 'C', true);
+        $pdf->Cell(60, 7, 'Nom du Client', 1, 0, 'C', true);
+        $pdf->Cell(35, 7, 'Telephone', 1, 0, 'C', true);
+        $pdf->Cell(40, 7, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(35, 7, 'Limite Credit', 1, 0, 'C', true);
+        $pdf->Cell(25, 7, 'Jours', 1, 0, 'C', true);
+        $pdf->Cell(30, 7, 'Dern. Vente', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -814,13 +814,13 @@ class CustomerCreditPdfReportController extends Controller
                 $pdf->SetFillColor($color[0], $color[1], $color[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
-                $pdf->Cell(25, 7, 'Cust. No.', 1, 0, 'C', true);
-                $pdf->Cell(60, 7, 'Customer Name', 1, 0, 'C', true);
-                $pdf->Cell(35, 7, 'Phone', 1, 0, 'C', true);
-                $pdf->Cell(40, 7, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-                $pdf->Cell(35, 7, 'Credit Limit', 1, 0, 'C', true);
-                $pdf->Cell(25, 7, 'Days Old', 1, 0, 'C', true);
-                $pdf->Cell(30, 7, 'Last Sale', 1, 1, 'C', true);
+                $pdf->Cell(25, 7, 'N Client', 1, 0, 'C', true);
+                $pdf->Cell(60, 7, 'Nom du Client', 1, 0, 'C', true);
+                $pdf->Cell(35, 7, 'Telephone', 1, 0, 'C', true);
+                $pdf->Cell(40, 7, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+                $pdf->Cell(35, 7, 'Limite Credit', 1, 0, 'C', true);
+                $pdf->Cell(25, 7, 'Jours', 1, 0, 'C', true);
+                $pdf->Cell(30, 7, 'Dern. Vente', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -836,7 +836,7 @@ class CustomerCreditPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'SUMMARY OVERVIEW', 0, 1);
+        $pdf->Cell(0, 6, 'RESUME', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -852,9 +852,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'TOTAL CUSTOMERS',
+            'TOTAL CLIENTS',
             number_format($summary['total_customers']),
-            'With outstanding debt',
+            'Avec dette en cours',
             $primary
         );
 
@@ -864,9 +864,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'TOTAL OUTSTANDING',
+            'TOTAL EN COURS',
             $currency . ' ' . number_format($summary['total_outstanding'], 2),
-            'Total debt owed',
+            'Dette totale due',
             $danger
         );
 
@@ -876,9 +876,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'TOTAL CREDIT LIMIT',
+            'LIMITE CREDIT TOTALE',
             $currency . ' ' . number_format($summary['total_credit_limit'], 2),
-            'Combined limit',
+            'Limite combinee',
             $this->colors['hippie_blue']
         );
 
@@ -888,9 +888,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'AVERAGE BALANCE',
+            'SOLDE MOYEN',
             $currency . ' ' . number_format($summary['average_balance'], 2),
-            'Per customer',
+            'Par client',
             $this->colors['warning']
         );
 
@@ -905,13 +905,13 @@ class CustomerCreditPdfReportController extends Controller
         if ($customers->isEmpty()) {
             $pdf->SetFont('Arial', 'I', 11);
             $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No customers with outstanding credits found.', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'Aucun client avec credits en cours trouve.', 0, 1, 'C');
             return;
         }
 
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'CUSTOMER DETAILS', 0, 1);
+        $pdf->Cell(0, 6, 'DETAILS DES CLIENTS', 0, 1);
         $pdf->Ln(2);
 
         // Table header
@@ -919,14 +919,14 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(23, 8, 'Cust. No.', 1, 0, 'C', true);
-        $pdf->Cell(50, 8, 'Customer Name', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Phone', 1, 0, 'C', true);
+        $pdf->Cell(23, 8, 'N Client', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Nom du Client', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Telephone', 1, 0, 'C', true);
         $pdf->Cell(22, 8, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Credit Limit', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Available', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Last Payment', 1, 1, 'C', true);
+        $pdf->Cell(35, 8, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'Limite Credit', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'Disponible', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Dern. Paiement', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -953,14 +953,14 @@ class CustomerCreditPdfReportController extends Controller
                 $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
-                $pdf->Cell(23, 8, 'Cust. No.', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Customer Name', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Phone', 1, 0, 'C', true);
+                $pdf->Cell(23, 8, 'N Client', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Nom du Client', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Telephone', 1, 0, 'C', true);
                 $pdf->Cell(22, 8, 'Type', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Balance (' . $currency . ')', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Credit Limit', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Available', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Last Payment', 1, 1, 'C', true);
+                $pdf->Cell(35, 8, 'Solde (' . $currency . ')', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Limite Credit', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Disponible', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Dern. Paiement', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -997,7 +997,7 @@ class CustomerCreditPdfReportController extends Controller
         if (isset($data['as_of_date'])) {
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
-            $pdf->Cell(0, 6, 'As of: ' . date('F d, Y', strtotime($data['as_of_date'])), 0, 1, 'C');
+            $pdf->Cell(0, 6, 'Au: ' . date('d F Y', strtotime($data['as_of_date'])), 0, 1, 'C');
         } elseif (isset($data['filters']['start_date'])) {
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
@@ -1087,9 +1087,9 @@ class CustomerCreditPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'I', 8);
         $pdf->SetTextColor(120, 120, 120);
-        $pdf->Cell(0, 4, 'Generated by: ' . $generatedBy . ' | ' . date('F d, Y h:i A', strtotime($generatedAt)), 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Genere par: ' . $generatedBy . ' | ' . date('d F Y H:i', strtotime($generatedAt)), 0, 1, 'C');
         $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-        $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
     }
     /**
      * =====================================================
@@ -1256,7 +1256,7 @@ class CustomerCreditPdfReportController extends Controller
         $danger = $this->colors['danger'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'ALL CUSTOMERS DEBT REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DE DETTE DE TOUS LES CLIENTS', $data, $primary);
 
         // SUMMARY BOXES
         $this->addAllCustomersDebtSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $danger);
@@ -1267,7 +1267,7 @@ class CustomerCreditPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'all_customers_debt_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_dette_tous_clients_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -1285,7 +1285,7 @@ class CustomerCreditPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'SUMMARY OVERVIEW', 0, 1);
+        $pdf->Cell(0, 6, 'RESUME', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -1301,9 +1301,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'TOTAL CUSTOMERS',
+            'TOTAL CLIENTS',
             number_format($summary['total_customers']),
-            'With debt activity',
+            'Avec activite de dette',
             $primary
         );
 
@@ -1313,9 +1313,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'CURRENT BALANCE',
+            'SOLDE ACTUEL',
             $currency . ' ' . number_format($summary['total_current_balance'], 2),
-            'Total outstanding',
+            'Total en cours',
             $danger
         );
 
@@ -1325,9 +1325,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'PERIOD SALES',
+            'VENTES PERIODE',
             $currency . ' ' . number_format($summary['total_period_sales'], 2),
-            'Credit sales in period',
+            'Ventes credit sur la periode',
             $this->colors['warning']
         );
 
@@ -1337,9 +1337,9 @@ class CustomerCreditPdfReportController extends Controller
             $y,
             $boxW,
             $boxH,
-            'PERIOD PAYMENTS',
+            'PAIEMENTS PERIODE',
             $currency . ' ' . number_format($summary['total_period_payments'], 2),
-            'Payments received',
+            'Paiements recus',
             $this->colors['success']
         );
 
@@ -1354,13 +1354,13 @@ class CustomerCreditPdfReportController extends Controller
         if (empty($customers)) {
             $pdf->SetFont('Arial', 'I', 11);
             $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No customers with debt activity found for this period.', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'Aucun client avec activite de dette trouve pour cette periode.', 0, 1, 'C');
             return;
         }
 
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'CUSTOMER DETAILS', 0, 1);
+        $pdf->Cell(0, 6, 'DETAILS DES CLIENTS', 0, 1);
         $pdf->Ln(2);
 
         // Table header
@@ -1368,16 +1368,16 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 7);
 
-        $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
-        $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
+        $pdf->Cell(20, 8, 'N Client', 1, 0, 'C', true);
+        $pdf->Cell(45, 8, 'Nom du Client', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Telephone', 1, 0, 'C', true);
         $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
-        $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Solde Actuel', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Limite Credit', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Ventes Per.', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Paiements Per.', 1, 0, 'C', true);
         $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
-        $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
+        $pdf->Cell(26, 8, 'Dern. Trans.', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 6);
         $pdf->SetTextColor(0, 0, 0);
@@ -1406,16 +1406,16 @@ class CustomerCreditPdfReportController extends Controller
                 $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 7);
-                $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
-                $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
+                $pdf->Cell(20, 8, 'N Client', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Nom du Client', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Telephone', 1, 0, 'C', true);
                 $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
-                $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Solde Actuel', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Limite Credit', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Ventes Per.', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Paiements Per.', 1, 0, 'C', true);
                 $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
-                $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
+                $pdf->Cell(26, 8, 'Dern. Trans.', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 6);
                 $pdf->SetTextColor(0, 0, 0);
             }

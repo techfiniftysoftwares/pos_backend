@@ -427,6 +427,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/sales-dashboard/return-refund-summary', [SalesDashboardController::class, 'getReturnRefundSummary']);
     Route::get('/sales-dashboard/discount-usage-summary', [SalesDashboardController::class, 'getDiscountUsageSummary']);
     Route::get('/sales-dashboard/credit-sales-summary', [SalesDashboardController::class, 'getCreditSalesSummary']);
+
+    // Missing Endpoints Fix
+    Route::get('/sales-dashboard/stock-turnover-rate', [SalesDashboardController::class, 'getStockTurnoverRate']);
+    Route::get('/sales-dashboard/sales-by-branch', [SalesDashboardController::class, 'getSalesByBranch']);
+    Route::get('/sales-dashboard/top-performing-products', [SalesDashboardController::class, 'getProductPerformance']); // Alias to product performance
+    Route::get('/sales-dashboard/average-transaction-value', [SalesDashboardController::class, 'getAverageTransactionValue']);
+    Route::get('/sales-dashboard/customer-purchase-frequency', [SalesDashboardController::class, 'getCustomerPurchaseFrequency']);
+    Route::get('/sales-dashboard/product-margin-analysis', [SalesDashboardController::class, 'getProductMarginAnalysis']);
     // PDF REPORTS - SALES
     Route::prefix('pdf-reports/sales')->group(function () {
         Route::post('/daily-sales-report', [SalesPdfReportController::class, 'generateDailySalesReport']);

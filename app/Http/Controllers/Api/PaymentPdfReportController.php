@@ -230,7 +230,7 @@ class PaymentPdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'PAYMENT METHOD REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DES MODES DE PAIEMENT', $data, $primary);
 
         // SUMMARY METRICS
         $this->addPaymentMethodSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
@@ -251,7 +251,7 @@ class PaymentPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'payment_method_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_modes_paiement_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -496,7 +496,7 @@ class PaymentPdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'PAYMENT RECONCILIATION REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DE RAPPROCHEMENT DES PAIEMENTS', $data, $primary);
 
         // PAYMENT SUMMARY
         $this->addReconciliationPaymentSummary($pdf, $data['payment_summary'], $data['currency'], $primary, $accent);
@@ -522,7 +522,7 @@ class PaymentPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'payment_reconciliation_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_rapprochement_paiements_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -773,7 +773,7 @@ class PaymentPdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'CASH RECONCILIATION REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DE RAPPROCHEMENT DE CAISSE', $data, $primary);
 
         // SUMMARY METRICS
         $this->addCashReconciliationSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
@@ -801,7 +801,7 @@ class PaymentPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'cash_reconciliation_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_rapprochement_caisse_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -858,7 +858,7 @@ class PaymentPdfReportController extends Controller
             $subtitle .= ' - ' . $data['branch']->name;
         }
 
-        $pdf->Cell(0, 5, $subtitle ?: 'All Branches', 0, 1, 'C');
+        $pdf->Cell(0, 5, $subtitle ?: 'Toutes les Succursales', 0, 1, 'C');
 
         $pdf->Ln(8);
     }
@@ -870,7 +870,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'SUMMARY OVERVIEW', 0, 1);
+        $pdf->Cell(0, 7, 'RESUME', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -880,17 +880,17 @@ class PaymentPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL PAYMENTS', number_format($summary['total_payments']), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL AMOUNT', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'TOTAL FEES', $currency . ' ' . number_format($summary['total_fees'], 2), $this->colors['warning']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'NET AMOUNT', $currency . ' ' . number_format($summary['net_amount'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL PAIEMENTS', number_format($summary['total_payments']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'MONTANT TOTAL', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'TOTAL FRAIS', $currency . ' ' . number_format($summary['total_fees'], 2), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'MONTANT NET', $currency . ' ' . number_format($summary['net_amount'], 2), $this->colors['success']);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'COMPLETED', number_format($summary['completed_payments']), $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'FAILED', number_format($summary['failed_payments']), $this->colors['danger']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'REFUNDED', number_format($summary['refunded_payments']), $this->colors['warning']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'AVG PAYMENT', $currency . ' ' . number_format($summary['average_payment'], 2), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'COMPLETES', number_format($summary['completed_payments']), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'ECHOUES', number_format($summary['failed_payments']), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'REMBOURSES', number_format($summary['refunded_payments']), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'PAIEMENT MOY.', $currency . ' ' . number_format($summary['average_payment'], 2), $this->colors['hippie_blue']);
 
         $pdf->SetY($y + $boxH + 8);
     }
@@ -902,20 +902,20 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'PAYMENT METHOD BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 7, 'REPARTITION PAR MODE DE PAIEMENT', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(55, 8, 'Payment Method', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Mode de Paiement', 1, 0, 'C', true);
         $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Count', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Fees', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Nombre', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Montant', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'Frais', 1, 0, 'C', true);
         $pdf->Cell(40, 8, 'Net', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Avg', 1, 1, 'C', true);
+        $pdf->Cell(30, 8, 'Moy.', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -940,13 +940,13 @@ class PaymentPdfReportController extends Controller
                 $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
-                $pdf->Cell(55, 8, 'Payment Method', 1, 0, 'C', true);
+                $pdf->Cell(55, 8, 'Mode de Paiement', 1, 0, 'C', true);
                 $pdf->Cell(25, 8, 'Type', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Count', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Fees', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Nombre', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Montant', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Frais', 1, 0, 'C', true);
                 $pdf->Cell(40, 8, 'Net', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Avg', 1, 1, 'C', true);
+                $pdf->Cell(30, 8, 'Moy.', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -962,7 +962,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 7, 'DAILY PAYMENT BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 7, 'REPARTITION JOURNALIERE DES PAIEMENTS', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
@@ -970,9 +970,9 @@ class PaymentPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 9);
 
         $pdf->Cell(70, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Transaction Count', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Total Amount', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Total Fees', 1, 1, 'C', true);
+        $pdf->Cell(70, 8, 'Nombre de Transactions', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Montant Total', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Total Frais', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -999,7 +999,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($color[0], $color[1], $color[2]);
-        $pdf->Cell(0, 7, 'TOP 10 PAYMENT TRANSACTIONS', 0, 1);
+        $pdf->Cell(0, 7, 'TOP 10 TRANSACTIONS DE PAIEMENT', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($color[0], $color[1], $color[2]);
@@ -1025,7 +1025,7 @@ class PaymentPdfReportController extends Controller
             $pdf->Cell(50, 7, substr($payment->reference_number, 0, 20), 1, 0, 'L', $fill);
             $pdf->Cell(45, 7, $payment->payment_date->format('M d, Y H:i'), 1, 0, 'C', $fill);
             $pdf->Cell(60, 7, substr($payment->paymentMethod->name ?? 'N/A', 0, 25), 1, 0, 'L', $fill);
-            $pdf->Cell(50, 7, substr($payment->customer->name ?? 'Walk-in', 0, 20), 1, 0, 'L', $fill);
+            $pdf->Cell(50, 7, substr($payment->customer->name ?? 'Client de passage', 0, 20), 1, 0, 'L', $fill);
             $pdf->Cell(35, 7, $currency . ' ' . number_format($payment->amount, 2), 1, 1, 'R', $fill);
 
             $fill = !$fill;
@@ -1042,7 +1042,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'PAYMENT RECONCILIATION SUMMARY', 0, 1);
+        $pdf->Cell(0, 7, 'RESUME RAPPROCHEMENT DES PAIEMENTS', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -1052,10 +1052,10 @@ class PaymentPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL PAYMENTS', number_format($summary['total_payments']), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL AMOUNT', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'RECONCILED', number_format($summary['reconciled_count']) . ' (' . number_format($summary['reconciliation_rate'], 1) . '%)', $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'UNRECONCILED', number_format($summary['unreconciled_count']), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL PAIEMENTS', number_format($summary['total_payments']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'MONTANT TOTAL', $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'RAPPROCHE', number_format($summary['reconciled_count']) . ' (' . number_format($summary['reconciliation_rate'], 1) . '%)', $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'NON RAPPROCHE', number_format($summary['unreconciled_count']), $this->colors['warning']);
 
         $pdf->SetY($y + $boxH + 6);
     }
@@ -1067,7 +1067,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 7, 'CASH RECONCILIATION VARIANCE SUMMARY', 0, 1);
+        $pdf->Cell(0, 7, 'RESUME ECARTS RAPPROCHEMENT CAISSE', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -1077,10 +1077,10 @@ class PaymentPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL VARIANCE', $currency . ' ' . number_format($summary['total_variance'], 2), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'AVG VARIANCE', $currency . ' ' . number_format($summary['average_variance'], 2), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'OVERAGES', $currency . ' ' . number_format($summary['overages'], 2), $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'SHORTAGES', $currency . ' ' . number_format($summary['shortages'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL ECART', $currency . ' ' . number_format($summary['total_variance'], 2), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'ECART MOY.', $currency . ' ' . number_format($summary['average_variance'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXCEDENTS', $currency . ' ' . number_format($summary['overages'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'MANQUANTS', $currency . ' ' . number_format($summary['shortages'], 2), $this->colors['danger']);
 
         $pdf->SetY($y + $boxH + 6);
     }
@@ -1092,19 +1092,19 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'RECONCILIATION STATUS BY PAYMENT METHOD', 0, 1);
+        $pdf->Cell(0, 7, 'ETAT RAPPROCHEMENT PAR MODE DE PAIEMENT', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(70, 8, 'Payment Method', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Mode de Paiement', 1, 0, 'C', true);
         $pdf->Cell(35, 8, 'Total', 1, 0, 'C', true);
-        $pdf->Cell(35, 8, 'Reconciled', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Unreconciled', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Reconciled Amt', 1, 0, 'C', true);
-        $pdf->Cell(45, 8, 'Unreconciled Amt', 1, 1, 'C', true);
+        $pdf->Cell(35, 8, 'Rapproche', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Non Rapproche', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Montant Rapp.', 1, 0, 'C', true);
+        $pdf->Cell(45, 8, 'Montant Non Rapp.', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -1133,7 +1133,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($color[0], $color[1], $color[2]);
-        $pdf->Cell(0, 7, 'CASH RECONCILIATION VARIANCES', 0, 1);
+        $pdf->Cell(0, 7, 'ECARTS RAPPROCHEMENT CAISSE', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($color[0], $color[1], $color[2]);
@@ -1141,12 +1141,12 @@ class PaymentPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 8);
 
         $pdf->Cell(45, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(45, 8, 'Shift', 1, 0, 'C', true);
-        $pdf->Cell(50, 8, 'User', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Expected', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Actual', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Variance', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Status', 1, 1, 'C', true);
+        $pdf->Cell(45, 8, 'Equipe', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Utilisateur', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Attendu', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Reel', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Ecart', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Statut', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -1187,7 +1187,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($color[0], $color[1], $color[2]);
-        $pdf->Cell(0, 7, 'UNRECONCILED PAYMENTS (Top 20)', 0, 1);
+        $pdf->Cell(0, 7, 'PAIEMENTS NON RAPPROCHES (Top 20)', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($color[0], $color[1], $color[2]);
@@ -1197,9 +1197,9 @@ class PaymentPdfReportController extends Controller
         $pdf->Cell(50, 8, 'Reference', 1, 0, 'C', true);
         $pdf->Cell(45, 8, 'Date', 1, 0, 'C', true);
         $pdf->Cell(60, 8, 'Payment Method', 1, 0, 'C', true);
-        $pdf->Cell(50, 8, 'Customer', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Amount', 1, 0, 'C', true);
-        $pdf->Cell(25, 8, 'Status', 1, 1, 'C', true);
+        $pdf->Cell(50, 8, 'Client', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Montant', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Statut', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(0, 0, 0);
@@ -1211,7 +1211,7 @@ class PaymentPdfReportController extends Controller
             $pdf->Cell(50, 7, substr($payment->reference_number, 0, 20), 1, 0, 'L', $fill);
             $pdf->Cell(45, 7, $payment->payment_date->format('M d, Y H:i'), 1, 0, 'C', $fill);
             $pdf->Cell(60, 7, substr($payment->paymentMethod->name ?? 'N/A', 0, 25), 1, 0, 'L', $fill);
-            $pdf->Cell(50, 7, substr($payment->customer->name ?? 'Walk-in', 0, 20), 1, 0, 'L', $fill);
+            $pdf->Cell(50, 7, substr($payment->customer->name ?? 'Client de passage', 0, 20), 1, 0, 'L', $fill);
             $pdf->Cell(30, 7, $currency . ' ' . number_format($payment->amount, 2), 1, 0, 'R', $fill);
             $pdf->Cell(25, 7, ucfirst($payment->status), 1, 1, 'C', $fill);
 
@@ -1225,10 +1225,10 @@ class PaymentPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 8);
                 $pdf->Cell(50, 8, 'Reference', 1, 0, 'C', true);
                 $pdf->Cell(45, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(60, 8, 'Payment Method', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Customer', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Amount', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Status', 1, 1, 'C', true);
+                $pdf->Cell(60, 8, 'Mode de Paiement', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Client', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Montant', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Statut', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -1244,7 +1244,7 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'RECONCILIATION SUMMARY', 0, 1);
+        $pdf->Cell(0, 7, 'RESUME RAPPROCHEMENT', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -1254,17 +1254,17 @@ class PaymentPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL RECONCILIATIONS', number_format($summary['total_reconciliations']), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'EXPECTED CASH', $currency . ' ' . number_format($summary['total_expected'], 2), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'ACTUAL CASH', $currency . ' ' . number_format($summary['total_actual'], 2), $this->colors['hippie_blue']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'TOTAL VARIANCE', $currency . ' ' . number_format($summary['total_variance'], 2), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL RAPPROCHEMENTS', number_format($summary['total_reconciliations']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CAISSE ATTENDUE', $currency . ' ' . number_format($summary['total_expected'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'CAISSE REELLE', $currency . ' ' . number_format($summary['total_actual'], 2), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'TOTAL ECART', $currency . ' ' . number_format($summary['total_variance'], 2), $this->colors['warning']);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'APPROVED', number_format($summary['approved_count']), $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'PENDING', number_format($summary['pending_count']), $this->colors['warning']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'OVERAGES', $currency . ' ' . number_format($summary['overages'], 2), $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'SHORTAGES', $currency . ' ' . number_format($summary['shortages'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'APPROUVE', number_format($summary['approved_count']), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'EN ATTENTE', number_format($summary['pending_count']), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXCEDENTS', $currency . ' ' . number_format($summary['overages'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'MANQUANTS', $currency . ' ' . number_format($summary['shortages'], 2), $this->colors['danger']);
 
         $pdf->SetY($y + $boxH + 8);
     }
@@ -1276,18 +1276,18 @@ class PaymentPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'BREAKDOWN BY SHIFT TYPE', 0, 1);
+        $pdf->Cell(0, 7, 'REPARTITION PAR TYPE D EQUIPE', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(70, 8, 'Shift Type', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Count', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Expected', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Actual', 1, 0, 'C', true);
-        $pdf->Cell(50, 8, 'Variance', 1, 1, 'C', true);
+        $pdf->Cell(70, 8, 'Type Equipe', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Nombre', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Attendu', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Reel', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Ecart', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);

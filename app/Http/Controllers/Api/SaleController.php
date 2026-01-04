@@ -175,10 +175,12 @@ class SaleController extends Controller
                 $unitPrice = $product->selling_price;
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+                $lineTotal = ($unitPrice * $quantity) - $itemDiscount;
                 $taxRate = $product->tax_rate ?? 0;
-                $taxAmount = ($lineSubtotal * $taxRate) / 100;
-                $lineTotal = $lineSubtotal + $taxAmount;
+
+                // Tax on Gross (User Requirement: Tax = Total * Rate)
+                $taxAmount = ($lineTotal * $taxRate) / 100;
+                $lineSubtotal = $lineTotal - $taxAmount; // Net Amount
 
                 $subtotal += $lineSubtotal;
                 $totalTax += $taxAmount;
@@ -332,9 +334,9 @@ class SaleController extends Controller
                 $lineTotalInclusive = ($unitPrice * $quantity) - $itemDiscount;
                 $taxRate = $product->tax_rate ?? 0;
 
-                // Tax Inclusive Calculation:
-                // Tax = Inclusive - (Inclusive / (1 + Rate/100))
-                $taxAmount = $lineTotalInclusive - ($lineTotalInclusive / (1 + ($taxRate / 100)));
+                // Tax Inclusive Calculation (Tax on Gross):
+                // Tax = Inclusive * Rate
+                $taxAmount = ($lineTotalInclusive * $taxRate) / 100;
                 $netSubtotal = $lineTotalInclusive - $taxAmount;
 
                 $subtotal += $netSubtotal;
@@ -423,10 +425,11 @@ class SaleController extends Controller
 
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+                // Tax Inclusive Logic (Tax on Gross)
+                $lineTotal = ($unitPrice * $quantity) - $itemDiscount; // Total is Inclusive
                 $taxRate = $product->tax_rate ?? 0;
-                $taxAmount = ($lineSubtotal * $taxRate) / 100;
-                $lineTotal = $lineSubtotal + $taxAmount;
+                $taxAmount = ($lineTotal * $taxRate) / 100;
+                $lineSubtotal = $lineTotal - $taxAmount; // Net
 
                 // === FIFO BATCH DEDUCTION LOGIC ===
                 $stock = Stock::where('product_id', $product->id)

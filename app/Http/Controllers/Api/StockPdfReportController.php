@@ -235,26 +235,26 @@ class StockPdfReportController extends Controller
             $pdf->Ln(3);
 
             $pdf->SetFont('Arial', 'B', 20);
-            $pdf->Cell(0, 10, 'STOCK LEVEL REPORT', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'RAPPORT DE NIVEAU DE STOCK', 0, 1, 'C');
             $pdf->Ln(2);
 
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
-            $pdf->Cell(0, 6, 'As of ' . date('F d, Y', strtotime($data['as_of_date'])), 0, 1, 'C');
+            $pdf->Cell(0, 6, 'Au ' . date('d F Y', strtotime($data['as_of_date'])), 0, 1, 'C');
 
             $pdf->SetFont('Arial', '', 9);
             $pdf->SetTextColor(100, 100, 100);
-            $filterText = 'All Stock';
+            $filterText = 'Tout le Stock';
             if ($data['branch']) {
-                $filterText = 'Branch: ' . $data['branch']->name;
+                $filterText = 'Succursale: ' . $data['branch']->name;
             }
-            $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
+            $pdf->Cell(0, 5, 'Filtre: ' . $filterText, 0, 1, 'C');
             $pdf->Ln(8);
 
             // ===== SUMMARY BOXES =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 7, 'INVENTORY SUMMARY', 0, 1);
+            $pdf->Cell(0, 7, 'RESUME DU STOCK', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 65;
@@ -271,7 +271,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
             $pdf->SetXY($startX, $y + 3);
-            $pdf->Cell($boxW, 5, 'TOTAL PRODUCTS', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'TOTAL PRODUITS', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_products']), 0, 0, 'C');
@@ -282,7 +282,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-            $pdf->Cell($boxW, 5, 'STOCK VALUE', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'VALEUR DU STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
             $pdf->Cell($boxW, 6, $data['currency'] . ' ' . number_format($data['summary']['total_value'], 2), 0, 0, 'C');
@@ -293,7 +293,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-            $pdf->Cell($boxW, 5, 'TOTAL QUANTITY', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'QUANTITE TOTALE', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_quantity'], 2), 0, 0, 'C');
@@ -304,7 +304,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($success[0], $success[1], $success[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-            $pdf->Cell($boxW, 5, 'IN STOCK', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'EN STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['in_stock_count']), 0, 0, 'C');
@@ -318,7 +318,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($warning[0], $warning[1], $warning[2]);
             $pdf->SetXY($startX, $y + 3);
-            $pdf->Cell($boxW, 5, 'LOW STOCK', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'STOCK BAS', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['low_stock_count']), 0, 0, 'C');
@@ -329,7 +329,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-            $pdf->Cell($boxW, 5, 'OUT OF STOCK', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'RUPTURE DE STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['out_of_stock_count']), 0, 0, 'C');
@@ -340,7 +340,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor(102, 102, 102);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-            $pdf->Cell($boxW, 5, 'RESERVED QTY', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'QTE RESERVEE', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_reserved'], 2), 0, 0, 'C');
@@ -351,7 +351,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-            $pdf->Cell($boxW, 5, 'AVG UNIT COST', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'COUT UNIT. MOY.', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
             $pdf->Cell($boxW, 6, $data['currency'] . ' ' . number_format($data['summary']['average_unit_cost'], 2), 0, 0, 'C');
@@ -362,17 +362,17 @@ class StockPdfReportController extends Controller
             if ($data['category_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'BREAKDOWN BY CATEGORY', 0, 1);
+                $pdf->Cell(0, 6, 'REPARTITION PAR CATEGORIE', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(100, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Products', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(60, 8, 'Value (' . $data['currency'] . ')', 1, 1, 'C', true);
+                $pdf->Cell(100, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Produits', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(60, 8, 'Valeur (' . $data['currency'] . ')', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -393,11 +393,11 @@ class StockPdfReportController extends Controller
             if ($data['stocks']->isEmpty()) {
                 $pdf->SetFont('Arial', 'I', 11);
                 $pdf->SetTextColor(128, 128, 128);
-                $pdf->Cell(0, 10, 'No stock records found matching the criteria.', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'Aucun enregistrement de stock trouve correspondant aux criteres.', 0, 1, 'C');
             } else {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'DETAILED STOCK LEVELS', 0, 1);
+                $pdf->Cell(0, 6, 'NIVEAUX DE STOCK DETAILLES', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
@@ -405,15 +405,15 @@ class StockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 7);
 
                 $pdf->Cell(20, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(65, 8, 'Product Name', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Qty', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Reserved', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Available', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Unit Cost', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Stock Value', 1, 0, 'C', true);
-                $pdf->Cell(15, 8, 'Status', 1, 1, 'C', true);
+                $pdf->Cell(65, 8, 'Nom du Produit', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Succursale', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Qte', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Reservee', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Disponible', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Cout Unit.', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Valeur Stock', 1, 0, 'C', true);
+                $pdf->Cell(15, 8, 'Statut', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 6);
                 $pdf->SetTextColor(0, 0, 0);
@@ -450,15 +450,15 @@ class StockPdfReportController extends Controller
                         $pdf->SetFont('Arial', 'B', 7);
 
                         $pdf->Cell(20, 8, 'SKU', 1, 0, 'C', true);
-                        $pdf->Cell(65, 8, 'Product Name', 1, 0, 'C', true);
-                        $pdf->Cell(35, 8, 'Category', 1, 0, 'C', true);
-                        $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'Qty', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'Reserved', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'Available', 1, 0, 'C', true);
-                        $pdf->Cell(30, 8, 'Unit Cost', 1, 0, 'C', true);
-                        $pdf->Cell(35, 8, 'Stock Value', 1, 0, 'C', true);
-                        $pdf->Cell(15, 8, 'Status', 1, 1, 'C', true);
+                        $pdf->Cell(65, 8, 'Nom du Produit', 1, 0, 'C', true);
+                        $pdf->Cell(35, 8, 'Categorie', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Succursale', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Qte', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Reservee', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Disponible', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Cout Unit.', 1, 0, 'C', true);
+                        $pdf->Cell(35, 8, 'Valeur Stock', 1, 0, 'C', true);
+                        $pdf->Cell(15, 8, 'Statut', 1, 1, 'C', true);
 
                         $pdf->SetFont('Arial', '', 6);
                         $pdf->SetTextColor(0, 0, 0);
@@ -475,11 +475,11 @@ class StockPdfReportController extends Controller
 
             $pdf->SetFont('Arial', 'I', 8);
             $pdf->SetTextColor(120, 120, 120);
-            $pdf->Cell(0, 4, 'Generated by: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Genere par: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
             $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-            $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
 
-            $filename = 'stock_level_report_' . date('Y-m-d') . '.pdf';
+            $filename = 'rapport_niveau_stock_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,
@@ -505,8 +505,8 @@ class StockPdfReportController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
                 'branch_id' => 'nullable|exists:branches,id',
                 'business_id' => 'nullable|exists:businesses,id',
                 'category_id' => 'nullable|exists:categories,id',
@@ -643,27 +643,32 @@ class StockPdfReportController extends Controller
             $pdf->Ln(3);
 
             $pdf->SetFont('Arial', 'B', 20);
-            $pdf->Cell(0, 10, 'STOCK SUMMARY REPORT', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'RAPPORT RESUME DU STOCK', 0, 1, 'C');
             $pdf->Ln(2);
 
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
-            $period = date('F d, Y', strtotime($data['period']['start'])) . ' - ' . date('F d, Y', strtotime($data['period']['end']));
+            // Handle date display - show date range if provided, otherwise show "As of" current date
+            if ($data['period']['start'] && $data['period']['end']) {
+                $period = date('F d, Y', strtotime($data['period']['start'])) . ' - ' . date('F d, Y', strtotime($data['period']['end']));
+            } else {
+                $period = 'Au ' . date('d F Y');
+            }
             $pdf->Cell(0, 6, $period, 0, 1, 'C');
 
             $pdf->SetFont('Arial', '', 9);
             $pdf->SetTextColor(100, 100, 100);
-            $filterText = 'All Categories';
+            $filterText = 'Toutes les Categories';
             if ($data['branch']) {
-                $filterText = 'Branch: ' . $data['branch']->name;
+                $filterText = 'Succursale: ' . $data['branch']->name;
             }
-            $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
+            $pdf->Cell(0, 5, 'Filtre: ' . $filterText, 0, 1, 'C');
             $pdf->Ln(8);
 
             // ===== OVERALL METRICS (2x2 LARGE BOXES) =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 6, 'KEY PERFORMANCE INDICATORS', 0, 1);
+            $pdf->Cell(0, 6, 'INDICATEURS CLES DE PERFORMANCE', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 90;
@@ -682,7 +687,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 9);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
             $pdf->SetXY($startX, $y + 5);
-            $pdf->Cell($boxW, 5, 'TOTAL STOCK VALUE', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'VALEUR TOTALE DU STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 14);
             $pdf->SetTextColor(0, 0, 0);
             $pdf->SetXY($startX, $y + 12);
@@ -690,7 +695,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', '', 8);
             $pdf->SetTextColor(100, 100, 100);
             $pdf->SetXY($startX, $y + 21);
-            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['total_products']) . ' products tracked', 0, 0, 'C');
+            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['total_products']) . ' produits suivis', 0, 0, 'C');
 
             // Box 2: Inventory Health
             $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
@@ -700,15 +705,15 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 9);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
             $pdf->SetXY($startX + $boxW + $gap, $y + 5);
-            $pdf->Cell($boxW, 5, 'INVENTORY HEALTH', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'SANTE DU STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 14);
             $pdf->SetTextColor(0, 0, 0);
             $pdf->SetXY($startX + $boxW + $gap, $y + 12);
-            $pdf->Cell($boxW, 7, number_format($data['overall_metrics']['low_stock_items']) . ' low stock', 0, 0, 'C');
+            $pdf->Cell($boxW, 7, number_format($data['overall_metrics']['low_stock_items']) . ' stock bas', 0, 0, 'C');
             $pdf->SetFont('Arial', '', 8);
             $pdf->SetTextColor(100, 100, 100);
             $pdf->SetXY($startX + $boxW + $gap, $y + 21);
-            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['out_of_stock_items']) . ' out of stock', 0, 0, 'C');
+            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['out_of_stock_items']) . ' en rupture', 0, 0, 'C');
 
             // Row 2
             $y += $boxH + $gap;
@@ -721,15 +726,15 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 9);
             $pdf->SetTextColor($success[0], $success[1], $success[2]);
             $pdf->SetXY($startX, $y + 5);
-            $pdf->Cell($boxW, 5, 'TOTAL QUANTITY', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'QUANTITE TOTALE', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 14);
             $pdf->SetTextColor(0, 0, 0);
             $pdf->SetXY($startX, $y + 12);
-            $pdf->Cell($boxW, 7, number_format($data['overall_metrics']['total_quantity'], 2) . ' units', 0, 0, 'C');
+            $pdf->Cell($boxW, 7, number_format($data['overall_metrics']['total_quantity'], 2) . ' unites', 0, 0, 'C');
             $pdf->SetFont('Arial', '', 8);
             $pdf->SetTextColor(100, 100, 100);
             $pdf->SetXY($startX, $y + 21);
-            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['total_reserved'], 2) . ' reserved', 0, 0, 'C');
+            $pdf->Cell($boxW, 4, number_format($data['overall_metrics']['total_reserved'], 2) . ' reservees', 0, 0, 'C');
 
             // Box 4: Avg Stock Value
             $pdf->SetDrawColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
@@ -739,7 +744,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 9);
             $pdf->SetTextColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
             $pdf->SetXY($startX + $boxW + $gap, $y + 5);
-            $pdf->Cell($boxW, 5, 'AVG STOCK VALUE', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'VALEUR STOCK MOY.', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 14);
             $pdf->SetTextColor(0, 0, 0);
             $pdf->SetXY($startX + $boxW + $gap, $y + 12);
@@ -755,18 +760,18 @@ class StockPdfReportController extends Controller
             if ($data['category_analysis']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'CATEGORY PERFORMANCE ANALYSIS', 0, 1);
+                $pdf->Cell(0, 6, 'ANALYSE DE PERFORMANCE PAR CATEGORIE', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
 
-                $pdf->Cell(60, 8, 'Category', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Products', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Total Qty', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Total Value (' . $data['currency'] . ')', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Low Stock', 1, 1, 'C', true);
+                $pdf->Cell(60, 8, 'Categorie', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Produits', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Qte Totale', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Valeur Totale (' . $data['currency'] . ')', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Stock Bas', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -788,7 +793,7 @@ class StockPdfReportController extends Controller
             if ($data['top_value_items']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'TOP 10 HIGHEST VALUE ITEMS', 0, 1);
+                $pdf->Cell(0, 6, 'TOP 10 ARTICLES A PLUS FORTE VALEUR', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
@@ -796,10 +801,10 @@ class StockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 8);
 
                 $pdf->Cell(10, 8, '#', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Product Name', 1, 0, 'C', true);
+                $pdf->Cell(70, 8, 'Nom du Produit', 1, 0, 'C', true);
                 $pdf->Cell(30, 8, 'SKU', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(50, 8, 'Stock Value (' . $data['currency'] . ')', 1, 1, 'C', true);
+                $pdf->Cell(30, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(50, 8, 'Valeur Stock (' . $data['currency'] . ')', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -823,18 +828,18 @@ class StockPdfReportController extends Controller
             if ($data['branch_comparison']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
-                $pdf->Cell(0, 6, 'BRANCH COMPARISON', 0, 1);
+                $pdf->Cell(0, 6, 'COMPARAISON DES SUCCURSALES', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($hippieBlue[0], $hippieBlue[1], $hippieBlue[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(60, 8, 'Branch Name', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Products', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Total Value (' . $data['currency'] . ')', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Low Stock', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Out of Stock', 1, 1, 'C', true);
+                $pdf->Cell(60, 8, 'Nom de la Succursale', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Produits', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Valeur Totale (' . $data['currency'] . ')', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Stock Bas', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Rupture Stock', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -860,11 +865,11 @@ class StockPdfReportController extends Controller
 
             $pdf->SetFont('Arial', 'I', 8);
             $pdf->SetTextColor(120, 120, 120);
-            $pdf->Cell(0, 4, 'Generated by: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Genere par: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
             $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-            $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
 
-            $filename = 'stock_summary_' . date('Y-m-d') . '.pdf';
+            $filename = 'resume_stock_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,
@@ -901,7 +906,7 @@ class StockPdfReportController extends Controller
                 'user_id' => 'nullable|exists:users,id',
                 'reference_type' => 'nullable|string',
                 'reason' => 'nullable|in:damaged,expired,theft,count_error,lost,found,other',
-                'sort_by' => 'nullable|in:date,quantity,product_name',
+                'sort_by' => 'nullable|in:date,quantity,product_name,value',
                 'sort_order' => 'nullable|in:asc,desc',
                 'search' => 'nullable|string',
                 'currency_code' => 'nullable|string|size:3',
@@ -998,6 +1003,8 @@ class StockPdfReportController extends Controller
             $query->join('products', 'stock_movements.product_id', '=', 'products.id')
                 ->orderBy('products.name', $sortOrder)
                 ->select('stock_movements.*');
+        } elseif ($sortBy === 'value') {
+            $query->orderByRaw('(quantity * unit_cost) ' . ($sortOrder === 'desc' ? 'DESC' : 'ASC'));
         } else {
             $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
             $query->orderBy($orderColumn, $sortOrder);
@@ -1085,7 +1092,7 @@ class StockPdfReportController extends Controller
             $pdf->Ln(3);
 
             $pdf->SetFont('Arial', 'B', 20);
-            $pdf->Cell(0, 10, 'STOCK MOVEMENT REPORT', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'RAPPORT DE MOUVEMENT DE STOCK', 0, 1, 'C');
             $pdf->Ln(2);
 
             $pdf->SetFont('Arial', 'B', 11);
@@ -1095,17 +1102,17 @@ class StockPdfReportController extends Controller
 
             $pdf->SetFont('Arial', '', 9);
             $pdf->SetTextColor(100, 100, 100);
-            $filterText = 'All Movements';
+            $filterText = 'Tous les Mouvements';
             if ($data['branch']) {
-                $filterText = 'Branch: ' . $data['branch']->name;
+                $filterText = 'Succursale: ' . $data['branch']->name;
             }
-            $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
+            $pdf->Cell(0, 5, 'Filtre: ' . $filterText, 0, 1, 'C');
             $pdf->Ln(8);
 
             // ===== SUMMARY BOXES =====
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 7, 'MOVEMENT SUMMARY', 0, 1);
+            $pdf->Cell(0, 7, 'RESUME DES MOUVEMENTS', 0, 1);
             $pdf->Ln(2);
 
             $boxW = 65;
@@ -1122,7 +1129,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
             $pdf->SetXY($startX, $y + 3);
-            $pdf->Cell($boxW, 5, 'TOTAL MOVEMENTS', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'TOTAL MOUVEMENTS', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_movements']), 0, 0, 'C');
@@ -1133,10 +1140,10 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($success[0], $success[1], $success[2]);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-            $pdf->Cell($boxW, 5, 'STOCK IN', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'ENTREE STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
-            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_in_movements']) . ' moves', 0, 0, 'C');
+            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_in_movements']) . ' mvts', 0, 0, 'C');
 
             // Box 3: Stock Out
             $pdf->SetDrawColor($danger[0], $danger[1], $danger[2]);
@@ -1144,10 +1151,10 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-            $pdf->Cell($boxW, 5, 'STOCK OUT', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'SORTIE STOCK', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
-            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_out_movements']) . ' moves', 0, 0, 'C');
+            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_out_movements']) . ' mvts', 0, 0, 'C');
 
             // Box 4: Unique Products
             $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
@@ -1155,7 +1162,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-            $pdf->Cell($boxW, 5, 'UNIQUE PRODUCTS', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'PRODUITS UNIQUES', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['unique_products']), 0, 0, 'C');
@@ -1169,7 +1176,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($success[0], $success[1], $success[2]);
             $pdf->SetXY($startX, $y + 3);
-            $pdf->Cell($boxW, 5, 'TOTAL IN QTY', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'QTE ENTREE TOTALE', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_in'], 2), 0, 0, 'C');
@@ -1180,7 +1187,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-            $pdf->Cell($boxW, 5, 'TOTAL OUT QTY', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'QTE SORTIE TOTALE', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_out'], 2), 0, 0, 'C');
@@ -1191,7 +1198,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-            $pdf->Cell($boxW, 5, 'NET MOVEMENT', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'MOUVEMENT NET', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
             $pdf->Cell($boxW, 6, number_format($data['summary']['net_movement'], 2), 0, 0, 'C');
@@ -1202,7 +1209,7 @@ class StockPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-            $pdf->Cell($boxW, 5, 'COST IMPACT', 0, 0, 'C');
+            $pdf->Cell($boxW, 5, 'IMPACT COUT', 0, 0, 'C');
             $pdf->SetFont('Arial', 'B', 12);
             $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
             $pdf->Cell($boxW, 6, $data['currency'] . ' ' . number_format($data['summary']['total_cost_impact'], 0), 0, 0, 'C');
@@ -1213,18 +1220,18 @@ class StockPdfReportController extends Controller
             if ($data['type_breakdown']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'BREAKDOWN BY MOVEMENT TYPE', 0, 1);
+                $pdf->Cell(0, 6, 'REPARTITION PAR TYPE DE MOUVEMENT', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
 
-                $pdf->Cell(80, 8, 'Movement Type', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Total Count', 1, 0, 'C', true);
-                $pdf->Cell(45, 8, 'Total Quantity', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Stock In', 1, 0, 'C', true);
-                $pdf->Cell(35, 8, 'Stock Out', 1, 1, 'C', true);
+                $pdf->Cell(80, 8, 'Type de Mouvement', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Nombre Total', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Quantite Totale', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Entree Stock', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Sortie Stock', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1246,7 +1253,7 @@ class StockPdfReportController extends Controller
             if ($data['daily_summary']->isNotEmpty()) {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-                $pdf->Cell(0, 6, 'DAILY MOVEMENT SUMMARY', 0, 1);
+                $pdf->Cell(0, 6, 'RESUME JOURNALIER DES MOUVEMENTS', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
@@ -1254,10 +1261,10 @@ class StockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 9);
 
                 $pdf->Cell(60, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(45, 8, 'Total Movements', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Stock In Qty', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Stock Out Qty', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Net Change', 1, 1, 'C', true);
+                $pdf->Cell(45, 8, 'Total Mouvements', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Qte Entree', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Qte Sortie', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Variation Nette', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
@@ -1279,11 +1286,11 @@ class StockPdfReportController extends Controller
             if ($data['movements']->isEmpty()) {
                 $pdf->SetFont('Arial', 'I', 11);
                 $pdf->SetTextColor(128, 128, 128);
-                $pdf->Cell(0, 10, 'No stock movements found for this period.', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'Aucun mouvement de stock trouve pour cette periode.', 0, 1, 'C');
             } else {
                 $pdf->SetFont('Arial', 'B', 11);
                 $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-                $pdf->Cell(0, 6, 'DETAILED MOVEMENT HISTORY', 0, 1);
+                $pdf->Cell(0, 6, 'HISTORIQUE DETAILLE DES MOUVEMENTS', 0, 1);
                 $pdf->Ln(1);
 
                 $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
@@ -1291,13 +1298,13 @@ class StockPdfReportController extends Controller
                 $pdf->SetFont('Arial', 'B', 7);
 
                 $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
-                $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
+                $pdf->Cell(55, 8, 'Produit', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Succursale', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Type Mouvement', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Quantite', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Avant', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Apres', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Utilisateur', 1, 0, 'C', true);
                 $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
 
                 $pdf->SetFont('Arial', '', 6);
@@ -1312,8 +1319,8 @@ class StockPdfReportController extends Controller
                     $branchName = substr($movement->branch->name ?? 'N/A', 0, 15);
                     $movementType = substr(str_replace('_', ' ', $movement->movement_type), 0, 15);
                     $quantity = ($movement->quantity >= 0 ? '+' : '') . number_format($movement->quantity, 1);
-                    $userName = substr($movement->user->name ?? 'System', 0, 15);
-                    $reference = substr($movement->reference_type ?? 'Manual', -15);
+                    $userName = substr($movement->user->name ?? 'Systeme', 0, 15);
+                    $reference = substr($movement->reference_type ?? 'Manuel', -15);
 
                     $pdf->Cell(25, 6, $date, 1, 0, 'C', $fill);
                     $pdf->Cell(55, 6, $productName, 1, 0, 'L', $fill);
@@ -1335,13 +1342,13 @@ class StockPdfReportController extends Controller
                         $pdf->SetFont('Arial', 'B', 7);
 
                         $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
-                        $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
-                        $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-                        $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
-                        $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
-                        $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
+                        $pdf->Cell(55, 8, 'Produit', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Succursale', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Type Mouvement', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Quantite', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Avant', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Apres', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Utilisateur', 1, 0, 'C', true);
                         $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
 
                         $pdf->SetFont('Arial', '', 6);
@@ -1353,7 +1360,7 @@ class StockPdfReportController extends Controller
                     $pdf->Ln(2);
                     $pdf->SetFont('Arial', 'I', 8);
                     $pdf->SetTextColor(100, 100, 100);
-                    $pdf->Cell(0, 5, 'Note: Showing first 50 movements. Total movements: ' . number_format($data['movements']->count()), 0, 1, 'C');
+                    $pdf->Cell(0, 5, 'Note: Affichage des 50 premiers mouvements. Total mouvements: ' . number_format($data['movements']->count()), 0, 1, 'C');
                 }
             }
 
@@ -1366,11 +1373,11 @@ class StockPdfReportController extends Controller
 
             $pdf->SetFont('Arial', 'I', 8);
             $pdf->SetTextColor(120, 120, 120);
-            $pdf->Cell(0, 4, 'Generated by: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Genere par: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
             $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-            $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
 
-            $filename = 'stock_movement_report_' . date('Y-m-d') . '.pdf';
+            $filename = 'rapport_mouvement_stock_' . date('Y-m-d') . '.pdf';
             return response()->stream(
                 fn() => print ($pdf->Output('S')),
                 200,

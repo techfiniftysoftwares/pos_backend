@@ -210,7 +210,7 @@ class RevenueStreamPdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'REVENUE STREAM REPORT', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RAPPORT DES FLUX DE REVENUS', $data, $primary);
 
         // SUMMARY METRICS
         $this->addRevenueSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
@@ -234,7 +234,7 @@ class RevenueStreamPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'revenue_stream_report_' . date('Y-m-d') . '.pdf';
+        $filename = 'rapport_flux_revenus_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -371,7 +371,7 @@ class RevenueStreamPdfReportController extends Controller
         $accent = $this->colors['sun'];
 
         // HEADER
-        $this->addProfessionalHeader($pdf, 'REVENUE STREAM SUMMARY', $data, $primary);
+        $this->addProfessionalHeader($pdf, 'RESUME DES FLUX DE REVENUS', $data, $primary);
 
         // KEY METRICS
         $this->addCompactRevenueMetrics($pdf, $data['metrics'], $data['currency'], $primary, $accent);
@@ -389,7 +389,7 @@ class RevenueStreamPdfReportController extends Controller
         // FOOTER
         $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $filename = 'revenue_stream_summary_' . date('Y-m-d') . '.pdf';
+        $filename = 'resume_flux_revenus_' . date('Y-m-d') . '.pdf';
         return response()->stream(
             fn() => print ($pdf->Output('S')),
             200,
@@ -411,7 +411,7 @@ class RevenueStreamPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'REVENUE OVERVIEW', 0, 1);
+        $pdf->Cell(0, 7, 'APERCU DES REVENUS', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 65;
@@ -421,17 +421,17 @@ class RevenueStreamPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL REVENUE', $currency . ' ' . number_format($summary['total_amount'], 2), $primary);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL ENTRIES', number_format($summary['total_entries']), $accent);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'APPROVED', number_format($summary['approved_entries']) . ' (' . $currency . number_format($summary['approved_amount'], 0) . ')', $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'PENDING', number_format($summary['pending_entries']) . ' (' . $currency . number_format($summary['pending_amount'], 0) . ')', $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'REVENU TOTAL', $currency . ' ' . number_format($summary['total_amount'], 2), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'TOTAL ENTREES', number_format($summary['total_entries']), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'APPROUVE', number_format($summary['approved_entries']) . ' (' . $currency . number_format($summary['approved_amount'], 0) . ')', $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'EN ATTENTE', number_format($summary['pending_entries']) . ' (' . $currency . number_format($summary['pending_amount'], 0) . ')', $this->colors['warning']);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL STREAMS', number_format($summary['total_streams']), $this->colors['hippie_blue']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'ACTIVE STREAMS', number_format($summary['active_streams']), $this->colors['success']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'REJECTED', number_format($summary['rejected_entries']), $this->colors['danger']);
-        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'REJECTED AMT', $currency . ' ' . number_format($summary['rejected_amount'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL FLUX', number_format($summary['total_streams']), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'FLUX ACTIFS', number_format($summary['active_streams']), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'REJETE', number_format($summary['rejected_entries']), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'MONTANT REJETE', $currency . ' ' . number_format($summary['rejected_amount'], 2), $this->colors['danger']);
 
         $pdf->SetY($y + $boxH + 8);
     }
@@ -443,7 +443,7 @@ class RevenueStreamPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'KEY PERFORMANCE INDICATORS', 0, 1);
+        $pdf->Cell(0, 6, 'INDICATEURS CLES DE PERFORMANCE', 0, 1);
         $pdf->Ln(2);
 
         $boxW = 90;
@@ -453,13 +453,13 @@ class RevenueStreamPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL REVENUE', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'From ' . $metrics['total_entries'] . ' entries', $primary);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'AVG ENTRY VALUE', $currency . ' ' . number_format($metrics['avg_entry_value'], 2), 'Per revenue entry', $accent);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'REVENU TOTAL', $currency . ' ' . number_format($metrics['total_revenue'], 2), 'De ' . $metrics['total_entries'] . ' entrees', $primary);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'VALEUR MOY. ENTREE', $currency . ' ' . number_format($metrics['avg_entry_value'], 2), 'Par entree de revenu', $accent);
 
         // Row 2
         $y += $boxH + $gap;
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'APPROVED REVENUE', $currency . ' ' . number_format($metrics['approved_revenue'], 2), number_format($metrics['approved_count']) . ' entries approved', $this->colors['success']);
-        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'PENDING REVENUE', $currency . ' ' . number_format($metrics['pending_revenue'], 2), number_format($metrics['pending_count']) . ' entries pending', $this->colors['warning']);
+        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH, 'REVENU APPROUVE', $currency . ' ' . number_format($metrics['approved_revenue'], 2), number_format($metrics['approved_count']) . ' entrees approuvees', $this->colors['success']);
+        $this->drawLargeMetricBox($pdf, $startX + $boxW + $gap, $y, $boxW, $boxH, 'REVENU EN ATTENTE', $currency . ' ' . number_format($metrics['pending_revenue'], 2), number_format($metrics['pending_count']) . ' entrees en attente', $this->colors['warning']);
 
         $pdf->SetY($y + $boxH + 6);
     }
@@ -471,17 +471,17 @@ class RevenueStreamPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'REVENUE BY STREAM', 0, 1);
+        $pdf->Cell(0, 7, 'REVENU PAR FLUX', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(100, 8, 'Revenue Stream', 1, 0, 'C', true);
-        $pdf->Cell(45, 8, 'Entries', 1, 0, 'C', true);
-        $pdf->Cell(55, 8, 'Approved (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(80, 8, 'Total Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(100, 8, 'Flux de Revenus', 1, 0, 'C', true);
+        $pdf->Cell(45, 8, 'Entrees', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Approuve (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(80, 8, 'Montant Total (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(0, 0, 0);
@@ -506,16 +506,16 @@ class RevenueStreamPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 6, 'TOP 5 REVENUE STREAMS', 0, 1);
+        $pdf->Cell(0, 6, 'TOP 5 FLUX DE REVENUS', 0, 1);
         $pdf->Ln(1);
 
         $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(95, 7, 'Stream Name', 1, 0, 'C', true);
-        $pdf->Cell(47, 7, 'Entries', 1, 0, 'C', true);
-        $pdf->Cell(48, 7, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(95, 7, 'Nom du Flux', 1, 0, 'C', true);
+        $pdf->Cell(47, 7, 'Entrees', 1, 0, 'C', true);
+        $pdf->Cell(48, 7, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -539,16 +539,16 @@ class RevenueStreamPdfReportController extends Controller
     {
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 7, 'REVENUE BY STATUS', 0, 1);
+        $pdf->Cell(0, 7, 'REVENU PAR STATUT', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
 
-        $pdf->Cell(93, 8, 'Status', 1, 0, 'C', true);
-        $pdf->Cell(93, 8, 'Entries', 1, 0, 'C', true);
-        $pdf->Cell(94, 8, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(93, 8, 'Statut', 1, 0, 'C', true);
+        $pdf->Cell(93, 8, 'Entrees', 1, 0, 'C', true);
+        $pdf->Cell(94, 8, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(0, 0, 0);
@@ -576,7 +576,7 @@ class RevenueStreamPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'DAILY REVENUE BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 7, 'REPARTITION JOURNALIERE DES REVENUS', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
@@ -584,8 +584,8 @@ class RevenueStreamPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 9);
 
         $pdf->Cell(93, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(93, 8, 'Entries', 1, 0, 'C', true);
-        $pdf->Cell(94, 8, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(93, 8, 'Entrees', 1, 0, 'C', true);
+        $pdf->Cell(94, 8, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -605,8 +605,8 @@ class RevenueStreamPdfReportController extends Controller
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 9);
                 $pdf->Cell(93, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(93, 8, 'Entries', 1, 0, 'C', true);
-                $pdf->Cell(94, 8, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+                $pdf->Cell(93, 8, 'Entrees', 1, 0, 'C', true);
+                $pdf->Cell(94, 8, 'Montant (' . $currency . ')', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(0, 0, 0);
             }
@@ -626,7 +626,7 @@ class RevenueStreamPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 6, 'DAILY BREAKDOWN', 0, 1);
+        $pdf->Cell(0, 6, 'REPARTITION JOURNALIERE', 0, 1);
         $pdf->Ln(1);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
@@ -634,8 +634,8 @@ class RevenueStreamPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 9);
 
         $pdf->Cell(70, 7, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(55, 7, 'Entries', 1, 0, 'C', true);
-        $pdf->Cell(65, 7, 'Amount (' . $currency . ')', 1, 1, 'C', true);
+        $pdf->Cell(55, 7, 'Entrees', 1, 0, 'C', true);
+        $pdf->Cell(65, 7, 'Montant (' . $currency . ')', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
@@ -660,13 +660,13 @@ class RevenueStreamPdfReportController extends Controller
         if ($entries->isEmpty()) {
             $pdf->SetFont('Arial', 'I', 11);
             $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No revenue entries found for this period.', 0, 1, 'C');
+            $pdf->Cell(0, 10, 'Aucune entree de revenu trouvee pour cette periode.', 0, 1, 'C');
             return;
         }
 
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-        $pdf->Cell(0, 7, 'REVENUE ENTRIES DETAILS', 0, 1);
+        $pdf->Cell(0, 7, 'DETAILS DES ENTREES DE REVENUS', 0, 1);
         $pdf->Ln(2);
 
         $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
@@ -674,10 +674,10 @@ class RevenueStreamPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 8);
 
         $pdf->Cell(28, 8, 'Date', 1, 0, 'C', true);
-        $pdf->Cell(70, 8, 'Revenue Stream', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Flux de Revenus', 1, 0, 'C', true);
         $pdf->Cell(47, 8, 'Reference', 1, 0, 'C', true);
-        $pdf->Cell(40, 8, 'Amount (' . $currency . ')', 1, 0, 'C', true);
-        $pdf->Cell(30, 8, 'Status', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Montant (' . $currency . ')', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Statut', 1, 0, 'C', true);
         $pdf->Cell(65, 8, 'Description', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 7);
@@ -709,10 +709,10 @@ class RevenueStreamPdfReportController extends Controller
                 $pdf->SetTextColor(255, 255, 255);
                 $pdf->SetFont('Arial', 'B', 8);
                 $pdf->Cell(28, 8, 'Date', 1, 0, 'C', true);
-                $pdf->Cell(70, 8, 'Revenue Stream', 1, 0, 'C', true);
+                $pdf->Cell(70, 8, 'Flux de Revenus', 1, 0, 'C', true);
                 $pdf->Cell(47, 8, 'Reference', 1, 0, 'C', true);
-                $pdf->Cell(40, 8, 'Amount (' . $currency . ')', 1, 0, 'C', true);
-                $pdf->Cell(30, 8, 'Status', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Montant (' . $currency . ')', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Statut', 1, 0, 'C', true);
                 $pdf->Cell(65, 8, 'Description', 1, 1, 'C', true);
                 $pdf->SetFont('Arial', '', 7);
                 $pdf->SetTextColor(0, 0, 0);
@@ -750,7 +750,7 @@ class RevenueStreamPdfReportController extends Controller
 
         $pdf->SetFont('Arial', '', 9);
         $pdf->SetTextColor(100, 100, 100);
-        $pdf->Cell(0, 5, 'Revenue Stream Analysis', 0, 1, 'C');
+        $pdf->Cell(0, 5, 'Analyse des Flux de Revenus', 0, 1, 'C');
 
         $pdf->Ln(8);
     }
@@ -817,8 +817,8 @@ class RevenueStreamPdfReportController extends Controller
 
         $pdf->SetFont('Arial', 'I', 8);
         $pdf->SetTextColor(120, 120, 120);
-        $pdf->Cell(0, 4, 'Generated by: ' . $generatedBy . ' | ' . date('F d, Y h:i A', strtotime($generatedAt)), 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Genere par: ' . $generatedBy . ' | ' . date('d F Y H:i', strtotime($generatedAt)), 0, 1, 'C');
         $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-        $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Ceci est un document genere par ordinateur et ne necessite aucune signature', 0, 1, 'C');
     }
 }
