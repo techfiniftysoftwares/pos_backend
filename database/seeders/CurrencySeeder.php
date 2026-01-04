@@ -11,6 +11,13 @@ class CurrencySeeder extends Seeder
     {
         $currencies = [
             [
+                'code' => 'KES',
+                'name' => 'Kenyan Shilling',
+                'symbol' => 'KSh',
+                'is_base' => true, // Set as base currency
+                'is_active' => true,
+            ],
+            [
                 'code' => 'USD',
                 'name' => 'US Dollar',
                 'symbol' => '$',
@@ -18,44 +25,19 @@ class CurrencySeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'code' => 'KES',
-                'name' => 'Kenyan Shilling',
-                'symbol' => 'KSh',
-                'is_base' => true, // Set your base currency
-                'is_active' => true,
-            ],
-            [
-                'code' => 'EUR',
-                'name' => 'Euro',
-                'symbol' => '€',
-                'is_base' => false,
-                'is_active' => true,
-            ],
-            [
-                'code' => 'GBP',
-                'name' => 'British Pound',
-                'symbol' => '£',
-                'is_base' => false,
-                'is_active' => true,
-            ],
-            [
-                'code' => 'TZS',
-                'name' => 'Tanzanian Shilling',
-                'symbol' => 'TSh',
-                'is_base' => false,
-                'is_active' => true,
-            ],
-            [
-                'code' => 'UGX',
-                'name' => 'Ugandan Shilling',
-                'symbol' => 'USh',
+                'code' => 'CDF',
+                'name' => 'Congolese Franc',
+                'symbol' => 'FC',
                 'is_base' => false,
                 'is_active' => true,
             ],
         ];
 
         foreach ($currencies as $currency) {
-            Currency::create($currency);
+            Currency::updateOrCreate(
+                ['code' => $currency['code']],
+                $currency
+            );
         }
     }
 }

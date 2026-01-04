@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class CustomerCreditPdfReportController extends Controller
 {
@@ -172,7 +172,7 @@ class CustomerCreditPdfReportController extends Controller
 
         $filename = 'customer_debt_report_' . $data['customer']->customer_number . '_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -341,7 +341,7 @@ class CustomerCreditPdfReportController extends Controller
 
         $filename = 'credit_aging_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -514,7 +514,7 @@ class CustomerCreditPdfReportController extends Controller
 
         $filename = 'outstanding_credits_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -712,28 +712,48 @@ class CustomerCreditPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row 1
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX,
+            $y,
+            $boxW,
+            $boxH,
             'CURRENT (0-30)',
             $currency . ' ' . number_format($summary['current_total'], 2),
             $summary['current_count'] . ' customers',
             $this->colors['success']
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap),
+            $y,
+            $boxW,
+            $boxH,
             '31-60 DAYS',
             $currency . ' ' . number_format($summary['days_31_60_total'], 2),
             $summary['days_31_60_count'] . ' customers',
             $warning
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 2,
+            $y,
+            $boxW,
+            $boxH,
             '61-90 DAYS',
             $currency . ' ' . number_format($summary['days_61_90_total'], 2),
             $summary['days_61_90_count'] . ' customers',
             $this->colors['sun']
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 3,
+            $y,
+            $boxW,
+            $boxH,
             'OVER 90 DAYS',
             $currency . ' ' . number_format($summary['over_90_total'], 2),
             $summary['over_90_count'] . ' customers',
@@ -826,28 +846,48 @@ class CustomerCreditPdfReportController extends Controller
         $y = $pdf->GetY();
 
         // Row
-        $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX,
+            $y,
+            $boxW,
+            $boxH,
             'TOTAL CUSTOMERS',
             number_format($summary['total_customers']),
             'With outstanding debt',
             $primary
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap),
+            $y,
+            $boxW,
+            $boxH,
             'TOTAL OUTSTANDING',
             $currency . ' ' . number_format($summary['total_outstanding'], 2),
             'Total debt owed',
             $danger
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 2,
+            $y,
+            $boxW,
+            $boxH,
             'TOTAL CREDIT LIMIT',
             $currency . ' ' . number_format($summary['total_credit_limit'], 2),
             'Combined limit',
             $this->colors['hippie_blue']
         );
 
-        $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH,
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 3,
+            $y,
+            $boxW,
+            $boxH,
             'AVERAGE BALANCE',
             $currency . ' ' . number_format($summary['average_balance'], 2),
             'Per customer',
@@ -962,8 +1002,8 @@ class CustomerCreditPdfReportController extends Controller
             $pdf->SetFont('Arial', 'B', 11);
             $pdf->SetTextColor(0, 0, 0);
             $period = date('F d, Y', strtotime($data['filters']['start_date'])) .
-                      ' - ' .
-                      date('F d, Y', strtotime($data['filters']['end_date']));
+                ' - ' .
+                date('F d, Y', strtotime($data['filters']['end_date']));
             $pdf->Cell(0, 6, $period, 0, 1, 'C');
         }
 
@@ -1052,313 +1092,333 @@ class CustomerCreditPdfReportController extends Controller
         $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
     }
     /**
- * =====================================================
- * REPORT 4: ALL CUSTOMERS DEBT REPORT (LIST)
- * =====================================================
- * Shows debt summary for ALL customers with outstanding balances
- */
-public function generateAllCustomersDebtReport(Request $request)
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'branch_id' => 'nullable|exists:branches,id',
-            'business_id' => 'nullable|exists:businesses,id',
-            'customer_type' => 'nullable|in:regular,vip,wholesale',
-            'min_balance' => 'nullable|numeric|min:0',
-            'show_only_with_balance' => 'nullable|boolean',
-            'currency_code' => 'nullable|string|size:3',
-        ]);
+     * =====================================================
+     * REPORT 4: ALL CUSTOMERS DEBT REPORT (LIST)
+     * =====================================================
+     * Shows debt summary for ALL customers with outstanding balances
+     */
+    public function generateAllCustomersDebtReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'branch_id' => 'nullable|exists:branches,id',
+                'business_id' => 'nullable|exists:businesses,id',
+                'customer_type' => 'nullable|in:regular,vip,wholesale',
+                'min_balance' => 'nullable|numeric|min:0',
+                'show_only_with_balance' => 'nullable|boolean',
+                'currency_code' => 'nullable|string|size:3',
+            ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
-        }
+            if ($validator->fails()) {
+                return validationErrorResponse($validator->errors());
+            }
 
-        $reportData = $this->getAllCustomersDebtData($request);
-        return $this->generateAllCustomersDebtPDF($reportData);
+            $reportData = $this->getAllCustomersDebtData($request);
+            return $this->generateAllCustomersDebtPDF($reportData);
 
-    } catch (\Exception $e) {
-        Log::error('Failed to generate all customers debt report PDF', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return serverErrorResponse('Failed to generate all customers debt report', $e->getMessage());
-    }
-}
-
-/**
- * Get all customers debt data
- */
-private function getAllCustomersDebtData(Request $request)
-{
-    $user = Auth::user();
-
-    // Get currency information
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
-
-    $businessId = $request->business_id ?? $user->business_id;
-    $minBalance = $request->min_balance ?? 0;
-    $showOnlyWithBalance = $request->show_only_with_balance ?? true;
-
-    // Build customer query
-    $customerQuery = Customer::query()
-        ->where('business_id', $businessId);
-
-    if ($request->customer_type) {
-        $customerQuery->where('customer_type', $request->customer_type);
-    }
-
-    if ($showOnlyWithBalance) {
-        $customerQuery->where('current_credit_balance', '>', $minBalance);
-    }
-
-    $customers = $customerQuery->get();
-
-    // Get transaction data for each customer within date range
-    $customersData = [];
-    $grandTotalSales = 0;
-    $grandTotalPayments = 0;
-    $grandTotalBalance = 0;
-
-    foreach ($customers as $customer) {
-        // Get transactions for this customer in date range
-        $transactions = CustomerCreditTransaction::where('customer_id', $customer->id)
-            ->whereDate('created_at', '>=', $request->start_date)
-            ->whereDate('created_at', '<=', $request->end_date);
-
-        if ($request->branch_id) {
-            $transactions->where('branch_id', $request->branch_id);
-        }
-
-        $transactions = $transactions->get();
-
-        // Calculate customer totals
-        $totalSales = $transactions->where('transaction_type', 'sale')->sum('amount');
-        $totalPayments = $transactions->where('transaction_type', 'payment')->sum('amount');
-        $totalAdjustments = $transactions->where('transaction_type', 'adjustment')->sum('amount');
-
-        // Get last transaction
-        $lastTransaction = CustomerCreditTransaction::where('customer_id', $customer->id)
-            ->latest()
-            ->first();
-
-        // Only include customers with transactions in the period OR current balance
-        if ($transactions->count() > 0 || $customer->current_credit_balance > 0) {
-            $customersData[] = [
-                'customer_number' => $customer->customer_number,
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-                'email' => $customer->email,
-                'customer_type' => $customer->customer_type,
-                'credit_limit' => $customer->credit_limit,
-                'current_balance' => $customer->current_credit_balance,
-                'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
-                'period_sales' => $totalSales,
-                'period_payments' => $totalPayments,
-                'period_adjustments' => $totalAdjustments,
-                'transaction_count' => $transactions->count(),
-                'last_transaction_date' => $lastTransaction ? $lastTransaction->created_at->format('Y-m-d') : 'N/A',
-            ];
-
-            $grandTotalSales += $totalSales;
-            $grandTotalPayments += $totalPayments;
-            $grandTotalBalance += $customer->current_credit_balance;
+        } catch (\Exception $e) {
+            Log::error('Failed to generate all customers debt report PDF', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return serverErrorResponse('Failed to generate all customers debt report', $e->getMessage());
         }
     }
 
-    // Sort by current balance (highest first)
-    usort($customersData, function($a, $b) {
-        return $b['current_balance'] <=> $a['current_balance'];
-    });
+    /**
+     * Get all customers debt data
+     */
+    private function getAllCustomersDebtData(Request $request)
+    {
+        $user = Auth::user();
 
-    // Summary metrics
-    $summary = [
-        'total_customers' => count($customersData),
-        'total_current_balance' => $grandTotalBalance,
-        'total_period_sales' => $grandTotalSales,
-        'total_period_payments' => $grandTotalPayments,
-        'average_balance' => count($customersData) > 0 ? $grandTotalBalance / count($customersData) : 0,
-        'total_credit_limit' => collect($customersData)->sum('credit_limit'),
-    ];
+        // Get currency information
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
 
-    return [
-        'customers' => $customersData,
-        'summary' => $summary,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'filters' => [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'branch_id' => $request->branch_id,
-            'customer_type' => $request->customer_type,
-            'min_balance' => $minBalance,
-        ],
-        'business' => $user->business,
-        'branch' => $request->branch_id ? $user->primaryBranch : null,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
+        $businessId = $request->business_id ?? $user->business_id;
+        $minBalance = $request->min_balance ?? 0;
+        $showOnlyWithBalance = $request->show_only_with_balance ?? true;
 
-/**
- * Generate all customers debt PDF
- */
-private function generateAllCustomersDebtPDF($data)
-{
-    $pdf = new \FPDF('L', 'mm', 'A4');
-    $pdf->SetAutoPageBreak(true, 25);
-    $pdf->AddPage();
+        // Build customer query
+        $customerQuery = Customer::query()
+            ->where('business_id', $businessId);
 
-    $primary = $this->colors['matisse'];
-    $danger = $this->colors['danger'];
+        if ($request->customer_type) {
+            $customerQuery->where('customer_type', $request->customer_type);
+        }
 
-    // HEADER
-    $this->addProfessionalHeader($pdf, 'ALL CUSTOMERS DEBT REPORT', $data, $primary);
+        if ($showOnlyWithBalance) {
+            $customerQuery->where('current_credit_balance', '>', $minBalance);
+        }
 
-    // SUMMARY BOXES
-    $this->addAllCustomersDebtSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $danger);
+        $customers = $customerQuery->get();
 
-    // CUSTOMERS TABLE
-    $this->addAllCustomersDebtTable($pdf, $data['customers'], $data['currency'], $primary);
+        // Get transaction data for each customer within date range
+        $customersData = [];
+        $grandTotalSales = 0;
+        $grandTotalPayments = 0;
+        $grandTotalBalance = 0;
 
-    // FOOTER
-    $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
+        foreach ($customers as $customer) {
+            // Get transactions for this customer in date range
+            $transactions = CustomerCreditTransaction::where('customer_id', $customer->id)
+                ->whereDate('created_at', '>=', $request->start_date)
+                ->whereDate('created_at', '<=', $request->end_date);
 
-    $filename = 'all_customers_debt_report_' . date('Y-m-d') . '.pdf';
-    return response()->stream(
-        fn() => print($pdf->Output('S')),
-        200,
-        [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"'
-        ]
-    );
-}
+            if ($request->branch_id) {
+                $transactions->where('branch_id', $request->branch_id);
+            }
 
-/**
- * All customers debt summary boxes
- */
-private function addAllCustomersDebtSummaryBoxes($pdf, $summary, $currency, $primary, $danger)
-{
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-    $pdf->Cell(0, 6, 'SUMMARY OVERVIEW', 0, 1);
-    $pdf->Ln(2);
+            $transactions = $transactions->get();
 
-    $boxW = 65;
-    $boxH = 24;
-    $gap = 5;
-    $startX = 15;
-    $y = $pdf->GetY();
+            // Calculate customer totals
+            $totalSales = $transactions->where('transaction_type', 'sale')->sum('amount');
+            $totalPayments = $transactions->where('transaction_type', 'payment')->sum('amount');
+            $totalAdjustments = $transactions->where('transaction_type', 'adjustment')->sum('amount');
 
-    // Row 1
-    $this->drawLargeMetricBox($pdf, $startX, $y, $boxW, $boxH,
-        'TOTAL CUSTOMERS',
-        number_format($summary['total_customers']),
-        'With debt activity',
-        $primary
-    );
+            // Get last transaction
+            $lastTransaction = CustomerCreditTransaction::where('customer_id', $customer->id)
+                ->latest()
+                ->first();
 
-    $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH,
-        'CURRENT BALANCE',
-        $currency . ' ' . number_format($summary['total_current_balance'], 2),
-        'Total outstanding',
-        $danger
-    );
+            // Only include customers with transactions in the period OR current balance
+            if ($transactions->count() > 0 || $customer->current_credit_balance > 0) {
+                $customersData[] = [
+                    'customer_number' => $customer->customer_number,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'email' => $customer->email,
+                    'customer_type' => $customer->customer_type,
+                    'credit_limit' => $customer->credit_limit,
+                    'current_balance' => $customer->current_credit_balance,
+                    'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
+                    'period_sales' => $totalSales,
+                    'period_payments' => $totalPayments,
+                    'period_adjustments' => $totalAdjustments,
+                    'transaction_count' => $transactions->count(),
+                    'last_transaction_date' => $lastTransaction ? $lastTransaction->created_at->format('Y-m-d') : 'N/A',
+                ];
 
-    $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH,
-        'PERIOD SALES',
-        $currency . ' ' . number_format($summary['total_period_sales'], 2),
-        'Credit sales in period',
-        $this->colors['warning']
-    );
+                $grandTotalSales += $totalSales;
+                $grandTotalPayments += $totalPayments;
+                $grandTotalBalance += $customer->current_credit_balance;
+            }
+        }
 
-    $this->drawLargeMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH,
-        'PERIOD PAYMENTS',
-        $currency . ' ' . number_format($summary['total_period_payments'], 2),
-        'Payments received',
-        $this->colors['success']
-    );
+        // Sort by current balance (highest first)
+        usort($customersData, function ($a, $b) {
+            return $b['current_balance'] <=> $a['current_balance'];
+        });
 
-    $pdf->SetY($y + $boxH + 8);
-}
+        // Summary metrics
+        $summary = [
+            'total_customers' => count($customersData),
+            'total_current_balance' => $grandTotalBalance,
+            'total_period_sales' => $grandTotalSales,
+            'total_period_payments' => $grandTotalPayments,
+            'average_balance' => count($customersData) > 0 ? $grandTotalBalance / count($customersData) : 0,
+            'total_credit_limit' => collect($customersData)->sum('credit_limit'),
+        ];
 
-/**
- * All customers debt table
- */
-private function addAllCustomersDebtTable($pdf, $customers, $currency, $primary)
-{
-    if (empty($customers)) {
-        $pdf->SetFont('Arial', 'I', 11);
-        $pdf->SetTextColor(128, 128, 128);
-        $pdf->Cell(0, 10, 'No customers with debt activity found for this period.', 0, 1, 'C');
-        return;
+        return [
+            'customers' => $customersData,
+            'summary' => $summary,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'filters' => [
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'branch_id' => $request->branch_id,
+                'customer_type' => $request->customer_type,
+                'min_balance' => $minBalance,
+            ],
+            'business' => $user->business,
+            'branch' => $request->branch_id ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
     }
 
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-    $pdf->Cell(0, 6, 'CUSTOMER DETAILS', 0, 1);
-    $pdf->Ln(2);
+    /**
+     * Generate all customers debt PDF
+     */
+    private function generateAllCustomersDebtPDF($data)
+    {
+        $pdf = new \FPDF('L', 'mm', 'A4');
+        $pdf->SetAutoPageBreak(true, 25);
+        $pdf->AddPage();
 
-    // Table header
-    $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 7);
+        $primary = $this->colors['matisse'];
+        $danger = $this->colors['danger'];
 
-    $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
-    $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
-    $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
-    $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
-    $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
-    $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
-    $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
-    $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
-    $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
-    $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
+        // HEADER
+        $this->addProfessionalHeader($pdf, 'ALL CUSTOMERS DEBT REPORT', $data, $primary);
 
-    $pdf->SetFont('Arial', '', 6);
-    $pdf->SetTextColor(0, 0, 0);
+        // SUMMARY BOXES
+        $this->addAllCustomersDebtSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $danger);
 
-    $fill = false;
-    foreach ($customers as $cust) {
-        $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
+        // CUSTOMERS TABLE
+        $this->addAllCustomersDebtTable($pdf, $data['customers'], $data['currency'], $primary);
 
-        $pdf->Cell(20, 7, $cust['customer_number'], 1, 0, 'C', $fill);
-        $pdf->Cell(45, 7, substr($cust['name'], 0, 25), 1, 0, 'L', $fill);
-        $pdf->Cell(25, 7, substr($cust['phone'] ?? 'N/A', 0, 12), 1, 0, 'C', $fill);
-        $pdf->Cell(18, 7, ucfirst($cust['customer_type']), 1, 0, 'C', $fill);
-        $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['current_balance'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(28, 7, $currency . ' ' . number_format($cust['credit_limit'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['period_sales'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['period_payments'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(18, 7, number_format($cust['transaction_count']), 1, 0, 'C', $fill);
-        $pdf->Cell(26, 7, $cust['last_transaction_date'], 1, 1, 'C', $fill);
+        // FOOTER
+        $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
 
-        $fill = !$fill;
+        $filename = 'all_customers_debt_report_' . date('Y-m-d') . '.pdf';
+        return response()->stream(
+            fn() => print ($pdf->Output('S')),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"'
+            ]
+        );
+    }
 
-        // Check for page break
-        if ($pdf->GetY() > 180) {
-            $pdf->AddPage();
-            // Repeat header
-            $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
-            $pdf->SetTextColor(255, 255, 255);
-            $pdf->SetFont('Arial', 'B', 7);
-            $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
-            $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
-            $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
-            $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
-            $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
-            $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
-            $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
-            $pdf->SetFont('Arial', '', 6);
-            $pdf->SetTextColor(0, 0, 0);
+    /**
+     * All customers debt summary boxes
+     */
+    private function addAllCustomersDebtSummaryBoxes($pdf, $summary, $currency, $primary, $danger)
+    {
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 6, 'SUMMARY OVERVIEW', 0, 1);
+        $pdf->Ln(2);
+
+        $boxW = 65;
+        $boxH = 24;
+        $gap = 5;
+        $startX = 15;
+        $y = $pdf->GetY();
+
+        // Row 1
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX,
+            $y,
+            $boxW,
+            $boxH,
+            'TOTAL CUSTOMERS',
+            number_format($summary['total_customers']),
+            'With debt activity',
+            $primary
+        );
+
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap),
+            $y,
+            $boxW,
+            $boxH,
+            'CURRENT BALANCE',
+            $currency . ' ' . number_format($summary['total_current_balance'], 2),
+            'Total outstanding',
+            $danger
+        );
+
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 2,
+            $y,
+            $boxW,
+            $boxH,
+            'PERIOD SALES',
+            $currency . ' ' . number_format($summary['total_period_sales'], 2),
+            'Credit sales in period',
+            $this->colors['warning']
+        );
+
+        $this->drawLargeMetricBox(
+            $pdf,
+            $startX + ($boxW + $gap) * 3,
+            $y,
+            $boxW,
+            $boxH,
+            'PERIOD PAYMENTS',
+            $currency . ' ' . number_format($summary['total_period_payments'], 2),
+            'Payments received',
+            $this->colors['success']
+        );
+
+        $pdf->SetY($y + $boxH + 8);
+    }
+
+    /**
+     * All customers debt table
+     */
+    private function addAllCustomersDebtTable($pdf, $customers, $currency, $primary)
+    {
+        if (empty($customers)) {
+            $pdf->SetFont('Arial', 'I', 11);
+            $pdf->SetTextColor(128, 128, 128);
+            $pdf->Cell(0, 10, 'No customers with debt activity found for this period.', 0, 1, 'C');
+            return;
+        }
+
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 6, 'CUSTOMER DETAILS', 0, 1);
+        $pdf->Ln(2);
+
+        // Table header
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 7);
+
+        $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
+        $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
+        $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
+        $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
+        $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
+        $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
+        $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 6);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        foreach ($customers as $cust) {
+            $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
+
+            $pdf->Cell(20, 7, $cust['customer_number'], 1, 0, 'C', $fill);
+            $pdf->Cell(45, 7, substr($cust['name'], 0, 25), 1, 0, 'L', $fill);
+            $pdf->Cell(25, 7, substr($cust['phone'] ?? 'N/A', 0, 12), 1, 0, 'C', $fill);
+            $pdf->Cell(18, 7, ucfirst($cust['customer_type']), 1, 0, 'C', $fill);
+            $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['current_balance'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(28, 7, $currency . ' ' . number_format($cust['credit_limit'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['period_sales'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(30, 7, $currency . ' ' . number_format($cust['period_payments'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(18, 7, number_format($cust['transaction_count']), 1, 0, 'C', $fill);
+            $pdf->Cell(26, 7, $cust['last_transaction_date'], 1, 1, 'C', $fill);
+
+            $fill = !$fill;
+
+            // Check for page break
+            if ($pdf->GetY() > 180) {
+                $pdf->AddPage();
+                // Repeat header
+                $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 7);
+                $pdf->Cell(20, 8, 'Cust. No.', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Customer Name', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Phone', 1, 0, 'C', true);
+                $pdf->Cell(18, 8, 'Type', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Current Bal.', 1, 0, 'C', true);
+                $pdf->Cell(28, 8, 'Credit Limit', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Period Sales', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Period Pmts', 1, 0, 'C', true);
+                $pdf->Cell(18, 8, 'Trans.', 1, 0, 'C', true);
+                $pdf->Cell(26, 8, 'Last Trans.', 1, 1, 'C', true);
+                $pdf->SetFont('Arial', '', 6);
+                $pdf->SetTextColor(0, 0, 0);
+            }
         }
     }
-}
 }

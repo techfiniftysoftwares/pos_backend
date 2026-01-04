@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class RevenueStreamPdfReportController extends Controller
 {
@@ -107,7 +107,7 @@ class RevenueStreamPdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('entry_date', '>=', $request->start_date)
-              ->whereDate('entry_date', '<=', $request->end_date);
+            ->whereDate('entry_date', '<=', $request->end_date);
 
         // Apply filters
         if ($request->revenue_stream_id) {
@@ -236,7 +236,7 @@ class RevenueStreamPdfReportController extends Controller
 
         $filename = 'revenue_stream_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -391,7 +391,7 @@ class RevenueStreamPdfReportController extends Controller
 
         $filename = 'revenue_stream_summary_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -744,8 +744,8 @@ class RevenueStreamPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor(0, 0, 0);
         $period = date('F d, Y', strtotime($data['period']['start'] ?? $data['filters']['start_date'])) .
-                  ' - ' .
-                  date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
+            ' - ' .
+            date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
         $pdf->Cell(0, 6, $period, 0, 1, 'C');
 
         $pdf->SetFont('Arial', '', 9);

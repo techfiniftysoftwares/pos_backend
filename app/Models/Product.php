@@ -15,6 +15,7 @@ class Product extends Model
         'category_id',
         'unit_id',
         'supplier_id',
+        'currency_id',
         'name',
         'sku',
         'barcode',
@@ -64,18 +65,23 @@ class Product extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
+    }
+
     // Will add later when Stock model exists
     public function stocks()
     {
         return $this->hasMany(Stock::class);
     }
     /**
- * Get stock for specific branch
- */
-public function stockAtBranch($branchId)
-{
-    return $this->hasOne(Stock::class)->where('branch_id', $branchId);
-}
+     * Get stock for specific branch
+     */
+    public function stockAtBranch($branchId)
+    {
+        return $this->hasOne(Stock::class)->where('branch_id', $branchId);
+    }
 
     // Scopes
     public function scopeActive($query)
@@ -91,15 +97,15 @@ public function stockAtBranch($branchId)
     public function scopeLowStock($query)
     {
         return $query->whereRaw('minimum_stock_level > 0')
-                     ->where('track_inventory', true);
+            ->where('track_inventory', true);
     }
 
     public function scopeSearch($query, $search)
     {
-        return $query->where(function($q) use ($search) {
+        return $query->where(function ($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
-              ->orWhere('sku', 'like', "%{$search}%")
-              ->orWhere('barcode', 'like', "%{$search}%");
+                ->orWhere('sku', 'like', "%{$search}%")
+                ->orWhere('barcode', 'like', "%{$search}%");
         });
     }
 
@@ -128,5 +134,44 @@ public function stockAtBranch($branchId)
         $prefix = strtoupper(substr($this->category->name ?? 'PRD', 0, 3));
         $count = Product::where('business_id', $this->business_id)->count();
         return $prefix . str_pad($count + 1, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Convert selling price to another currency
+     * Uses the exchange rate from the product's currency to the target currency
+     */
+    public function getPriceInCurrency($targetCurrencyId)
+    {
+        // If same currency, return as-is
+        if ($this->currency_id === $targetCurrencyId) {
+            return $this->selling_price;
+        }
+
+        // Get exchange rate
+        $rate = ExchangeRate::getCurrentRate(
+            $this->currency_id,
+            $targetCurrencyId,
+            $this->business_id
+        );
+
+        return $this->selling_price * ($rate ? $rate->rate : 1);
+    }
+
+    /**
+     * Convert cost price to another currency
+     */
+    public function getCostPriceInCurrency($targetCurrencyId)
+    {
+        if ($this->currency_id === $targetCurrencyId) {
+            return $this->cost_price;
+        }
+
+        $rate = ExchangeRate::getCurrentRate(
+            $this->currency_id,
+            $targetCurrencyId,
+            $this->business_id
+        );
+
+        return $this->cost_price * ($rate ? $rate->rate : 1);
     }
 }

@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class SalesPdfReportController extends Controller
 {
@@ -118,14 +118,19 @@ class SalesPdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('completed_at', '>=', $request->start_date)
-              ->whereDate('completed_at', '<=', $request->end_date);
+            ->whereDate('completed_at', '<=', $request->end_date);
 
         // Apply all filters
-        if ($request->customer_id) $query->where('customer_id', $request->customer_id);
-        if ($request->payment_type) $query->where('payment_type', $request->payment_type);
-        if ($request->payment_status) $query->where('payment_status', $request->payment_status);
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->cashier_id) $query->where('user_id', $request->cashier_id);
+        if ($request->customer_id)
+            $query->where('customer_id', $request->customer_id);
+        if ($request->payment_type)
+            $query->where('payment_type', $request->payment_type);
+        if ($request->payment_status)
+            $query->where('payment_status', $request->payment_status);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->cashier_id)
+            $query->where('user_id', $request->cashier_id);
 
         if ($request->product_id) {
             $query->whereHas('items', fn($q) => $q->where('product_id', $request->product_id));
@@ -244,7 +249,7 @@ class SalesPdfReportController extends Controller
 
         $filename = 'daily_sales_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -386,7 +391,7 @@ class SalesPdfReportController extends Controller
 
         $filename = 'sales_summary_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -523,8 +528,8 @@ class SalesPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor(0, 0, 0);
         $period = date('F d, Y', strtotime($data['period']['start'] ?? $data['filters']['start_date'])) .
-                  ' - ' .
-                  date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
+            ' - ' .
+            date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
         $pdf->Cell(0, 6, $period, 0, 1, 'C');
 
         // Subtitle

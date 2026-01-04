@@ -80,7 +80,11 @@ class SaleController extends Controller
             }
 
             if ($customerId) {
-                $query->where('customer_id', $customerId);
+                if ($customerId === 'walk-in') {
+                    $query->whereNull('customer_id');
+                } else {
+                    $query->where('customer_id', $customerId);
+                }
             }
 
             if ($status) {
@@ -102,8 +106,27 @@ class SaleController extends Controller
                 $query->whereDate('created_at', '<=', $dateTo);
             }
 
+            $cashierId = $request->input('cashier_id');
+
+            // ... (keep existing sorting/pagination setup if needed, but I am replacing the lines before loop)
+
+            // (I will just inject the cashier filter and update search logic.
+            // I need to be careful with context. 'dateTo' ends at 102. 'search' usage starts at 105.)
+
+            if ($cashierId) {
+                $query->where('cashier_id', $cashierId);
+            }
+
             if ($search) {
-                $query->where('sale_number', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('sale_number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('cashier', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
+                });
             }
 
             $sales = $query->orderBy($sortBy, $sortDirection)
@@ -235,13 +258,13 @@ class SaleController extends Controller
                 return errorResponse('Business does not have a base currency configured. Please contact administrator.', 400);
             }
 
-            // Use base currency for BOTH products and reporting
-            $productCurrency = $business->baseCurrency;
+            // Use base currency for reporting
             $baseCurrency = $business->baseCurrency;
             $saleCurrency = Currency::findOrFail($request->currency_id);
 
             // Check stock availability for all items first
             foreach ($request->items as $item) {
+                // ... (stock check logic remains same)
                 $stock = Stock::where('product_id', $item['product_id'])
                     ->where('branch_id', $request->branch_id)
                     ->where('business_id', $request->business_id)
@@ -251,25 +274,25 @@ class SaleController extends Controller
                     $product = Product::find($item['product_id']);
                     return errorResponse("Insufficient stock for {$product->name}. Available: " . ($stock->available_quantity ?? 0), 400);
                 }
-            }
 
-            // Get exchange rate for product currency → sale currency (if needed)
-            $productToSaleRate = 1.0;
-            if ($productCurrency->id !== $saleCurrency->id) {
-                $conversionRate = ExchangeRate::getCurrentRate(
-                    $productCurrency->id,
-                    $saleCurrency->id,
-                    $request->business_id
-                );
+                // Validate Exchange Rate existence if currencies differ
+                $product = Product::with('currency')->find($item['product_id']);
+                $productCurrency = $product->currency ?? $baseCurrency;
 
-                if (!$conversionRate) {
-                    return errorResponse(
-                        "No exchange rate found for {$productCurrency->code} → {$saleCurrency->code}. Please add an exchange rate first.",
-                        400
+                if ($productCurrency->id !== $saleCurrency->id) {
+                    $conversionRate = ExchangeRate::getCurrentRate(
+                        $productCurrency->id,
+                        $saleCurrency->id,
+                        $request->business_id
                     );
-                }
 
-                $productToSaleRate = $conversionRate->rate;
+                    if (!$conversionRate) {
+                        return errorResponse(
+                            "No exchange rate found for {$productCurrency->code} → {$saleCurrency->code}. Please add an exchange rate first.",
+                            400
+                        );
+                    }
+                }
             }
 
             // Calculate totals in SALE CURRENCY
@@ -278,9 +301,26 @@ class SaleController extends Controller
             $totalDiscount = 0;
 
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
+                $product = Product::with('currency')->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
-                $unitPrice = $product->selling_price; // In product currency (base currency)
+                $unitPrice = $product->selling_price; // In product currency
+
+                // Determine product currency
+                $productCurrency = $product->currency ?? $baseCurrency;
+
+                // Get exchange rate for product currency → sale currency (if needed)
+                $productToSaleRate = 1.0;
+                if ($productCurrency->id !== $saleCurrency->id) {
+                    $conversionRate = ExchangeRate::getCurrentRate(
+                        $productCurrency->id,
+                        $saleCurrency->id,
+                        $request->business_id
+                    );
+                    // Rate existence validated in previous loop
+                    if ($conversionRate) {
+                        $productToSaleRate = $conversionRate->rate;
+                    }
+                }
 
                 // Convert product price to sale currency if needed
                 if ($productCurrency->id !== $saleCurrency->id) {
@@ -289,15 +329,20 @@ class SaleController extends Controller
 
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                $lineSubtotal = ($unitPrice * $quantity) - $itemDiscount;
+                $lineTotalInclusive = ($unitPrice * $quantity) - $itemDiscount;
                 $taxRate = $product->tax_rate ?? 0;
-                $taxAmount = ($lineSubtotal * $taxRate) / 100;
 
-                $subtotal += $lineSubtotal;
+                // Tax Inclusive Calculation:
+                // Tax = Inclusive - (Inclusive / (1 + Rate/100))
+                $taxAmount = $lineTotalInclusive - ($lineTotalInclusive / (1 + ($taxRate / 100)));
+                $netSubtotal = $lineTotalInclusive - $taxAmount;
+
+                $subtotal += $netSubtotal;
                 $totalTax += $taxAmount;
                 $totalDiscount += $itemDiscount;
             }
 
+            // Grand Total (matches the sum of inclusive prices)
             $grandTotal = $subtotal + $totalTax;
 
             // Validate multi-currency payment amounts
@@ -310,14 +355,23 @@ class SaleController extends Controller
                     $totalPaidInSaleCurrency += $amountInSaleCurrency;
                 }
 
-                // Allow small rounding differences (1 cent)
-                if (abs($totalPaidInSaleCurrency - $grandTotal) > 0.01) {
+                // Allow change (overpayment), but block underpayment
+                if ($totalPaidInSaleCurrency < ($grandTotal - 0.01)) {
                     return errorResponse(
                         "Payment mismatch. Expected: " . round($grandTotal, 2) . " {$saleCurrency->code}, Received: " . round($totalPaidInSaleCurrency, 2) . " {$saleCurrency->code}",
                         400
                     );
                 }
             }
+
+            // Calculate change amount
+            $totalPaidInSaleCurrency = 0;
+            if ($request->payment_type !== 'credit') {
+                foreach ($request->payments as $payment) {
+                    $totalPaidInSaleCurrency += $payment['amount'] * $payment['exchange_rate'];
+                }
+            }
+            $changeAmount = max(0, $totalPaidInSaleCurrency - $grandTotal);
 
             // Credit sale validation
             if ($request->payment_type === 'credit') {
@@ -345,6 +399,7 @@ class SaleController extends Controller
                 'tax_amount' => round($totalTax, 2),
                 'discount_amount' => round($totalDiscount, 2),
                 'total_amount' => round($grandTotal, 2),
+                'change_amount' => round($changeAmount, 2),
                 'exchange_rate' => $request->sale_to_base_exchange_rate,
                 'total_in_base_currency' => round($request->total_in_base_currency, 2),
                 'status' => 'completed',
@@ -443,23 +498,15 @@ class SaleController extends Controller
                 ]);
             }
 
-            // Handle Multi-Currency Payments
-            if ($request->payment_type === 'credit') {
-                // Create Customer Credit Transaction
-                CustomerCreditTransaction::create([
-                    'customer_id' => $request->customer_id,
-                    'transaction_type' => 'sale',
-                    'amount' => $grandTotal,
-                    'reference_number' => $sale->sale_number,
-                    'processed_by' => Auth::id(),
-                    'branch_id' => $request->branch_id,
-                    'notes' => "Credit sale: {$sale->sale_number}",
-                ]);
-            } else {
-                // Create Multi-Currency Payment records
+            // Handle Multi-Currency Payments & Credit Logic
+            $totalPaidInitial = 0;
+
+            // Process payments if provided (even for credit/partial sales)
+            if (!empty($request->payments)) {
                 foreach ($request->payments as $paymentData) {
                     // Convert payment amount to sale currency
                     $amountInSaleCurrency = $paymentData['amount'] * $paymentData['exchange_rate'];
+                    $totalPaidInitial += $amountInSaleCurrency;
 
                     // Get payment currency
                     $paymentCurrency = Currency::findOrFail($paymentData['currency_id']);
@@ -506,6 +553,37 @@ class SaleController extends Controller
                         'exchange_rate' => $paymentData['exchange_rate'],
                         'amount_in_sale_currency' => round($amountInSaleCurrency, 2),
                     ]);
+
+                    // If it's a credit sale, this payment reduces the debt we just created
+                    if ($request->payment_type === 'credit') {
+                        CustomerCreditTransaction::create([
+                            'customer_id' => $request->customer_id,
+                            'transaction_type' => 'payment',
+                            'amount' => $amountInSaleCurrency, // Credit transactions tracked in sale currency? Assumed base/sale alignment or just value.
+                            // Ideally credit implies the currency of the customer account.
+                            // Assuming single currency logic for Credit Limit usually, or base currency.
+                            // But here we use sale currency amount (or base?).
+                            // The 'sale' transaction used $grandTotal (Sale Currency).
+                            // So 'payment' should use $amountInSaleCurrency.
+                            'reference_number' => $payment->reference_number,
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $request->branch_id,
+                            'notes' => "Payment for credit sale: {$sale->sale_number}",
+                        ]);
+                    }
+                }
+            }
+
+            // Update status if partial payment
+            if ($request->payment_type === 'credit' && $totalPaidInitial > 0) {
+                // Determine if fully paid (tolerant to small diffs)
+                if ($totalPaidInitial >= ($grandTotal - 0.01)) {
+                    $sale->update([
+                        'payment_status' => 'paid',
+                        'is_credit_sale' => false // Optionally mark as no longer credit? keeping true preserves history.
+                    ]);
+                } else {
+                    $sale->update(['payment_status' => 'partial']);
                 }
             }
 
@@ -545,6 +623,8 @@ class SaleController extends Controller
                 'cashier',
                 'items.product',
                 'salePayments.payment.paymentMethod',
+                'salePayments.payment.currency',
+                'salePayments.currency',
                 'return'
             ]);
 
@@ -717,4 +797,114 @@ class SaleController extends Controller
             return serverErrorResponse('Failed to recall held sale', $e->getMessage());
         }
     }
+
+    /**
+     * Add payment to existing sale
+     */
+    public function addPayment(Request $request, Sale $sale)
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_type' => 'required|in:cash,credit,mixed',
+            'payments' => 'required_if:payment_type,cash,mixed|array',
+            'payments.*.payment_method_id' => 'required_with:payments|exists:payment_methods,id',
+            'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+            'payments.*.currency_id' => 'required_with:payments|exists:currencies,id',
+            'payments.*.exchange_rate' => 'required_with:payments|numeric|min:0.0001',
+            'payments.*.transaction_id' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
+
+        try {
+            if ($sale->payment_status === 'paid') {
+                return errorResponse('Sale is already fully paid', 400);
+            }
+
+            DB::beginTransaction();
+
+            // Get business base currency
+            $business = Business::with('baseCurrency')->findOrFail($sale->business_id);
+            $baseCurrency = $business->baseCurrency;
+
+            if ($request->payment_type !== 'credit') {
+                foreach ($request->payments as $paymentData) {
+                    // Get payment currency
+                    $paymentCurrency = Currency::findOrFail($paymentData['currency_id']);
+
+                    // Calculate Base Currency Amount (Payment -> Base)
+                    // We check if a direct rate exists, otherwise default to 1
+                    $paymentToBaseRate = 1.0;
+                    if ($paymentCurrency->id !== $baseCurrency->id) {
+                        $rateObj = ExchangeRate::getCurrentRate($paymentCurrency->id, $baseCurrency->id, $sale->business_id);
+                        $paymentToBaseRate = $rateObj ? $rateObj->rate : 1.0;
+                    }
+
+                    $amountInBaseCurrency = $paymentData['amount'] * $paymentToBaseRate;
+
+                    // Create Payment
+                    $payment = Payment::create([
+                        'business_id' => $sale->business_id,
+                        'branch_id' => $sale->branch_id,
+                        'payment_method_id' => $paymentData['payment_method_id'],
+                        'customer_id' => $sale->customer_id,
+                        'amount' => $paymentData['amount'],
+                        'currency_id' => $paymentData['currency_id'],
+                        'currency' => $paymentCurrency->code,
+                        'exchange_rate' => $paymentToBaseRate,
+                        'amount_in_base_currency' => round($amountInBaseCurrency, 2),
+                        'status' => 'completed',
+                        'payment_type' => 'payment',
+                        'transaction_id' => $paymentData['transaction_id'] ?? null,
+                        'payment_date' => now(),
+                        'processed_by' => Auth::id(),
+                        'reference_type' => 'App\Models\Sale',
+                        'reference_id' => $sale->id,
+                        'notes' => $request->notes,
+                    ]);
+
+                    // Link to Sale
+                    $amountInSaleCurrency = $paymentData['amount'] * $paymentData['exchange_rate'];
+
+                    SalePayment::create([
+                        'sale_id' => $sale->id,
+                        'payment_id' => $payment->id,
+                        'amount' => $paymentData['amount'],
+                        'currency_id' => $paymentData['currency_id'],
+                        'exchange_rate' => $paymentData['exchange_rate'], // Payment -> Sale Rate
+                        'amount_in_sale_currency' => round($amountInSaleCurrency, 2),
+                    ]);
+                }
+            }
+
+            // Recalculate total paid
+            $totalPaid = SalePayment::where('sale_id', $sale->id)->sum('amount_in_sale_currency');
+
+            $remainingDue = $sale->total_amount - $totalPaid;
+
+            // Tolerance for floating point
+            if ($remainingDue <= 0.01) {
+                $sale->payment_status = 'paid';
+            } else {
+                $sale->payment_status = 'partial';
+            }
+
+            $sale->save();
+
+            DB::commit();
+
+            return successResponse('Payment added successfully', $sale->fresh(['salePayments.payment.paymentMethod']));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to add payment', [
+                'sale_id' => $sale->id,
+                'error' => $e->getMessage()
+            ]);
+            return serverErrorResponse('Failed to add payment', $e->getMessage());
+        }
+    }
+
 }

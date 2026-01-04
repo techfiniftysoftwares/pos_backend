@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class PdfReportController extends Controller
 {
@@ -118,14 +118,19 @@ class PdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('completed_at', '>=', $request->start_date)
-              ->whereDate('completed_at', '<=', $request->end_date);
+            ->whereDate('completed_at', '<=', $request->end_date);
 
         // Apply all filters
-        if ($request->customer_id) $query->where('customer_id', $request->customer_id);
-        if ($request->payment_type) $query->where('payment_type', $request->payment_type);
-        if ($request->payment_status) $query->where('payment_status', $request->payment_status);
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->cashier_id) $query->where('user_id', $request->cashier_id);
+        if ($request->customer_id)
+            $query->where('customer_id', $request->customer_id);
+        if ($request->payment_type)
+            $query->where('payment_type', $request->payment_type);
+        if ($request->payment_status)
+            $query->where('payment_status', $request->payment_status);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->cashier_id)
+            $query->where('user_id', $request->cashier_id);
 
         if ($request->product_id) {
             $query->whereHas('items', fn($q) => $q->where('product_id', $request->product_id));
@@ -244,7 +249,7 @@ class PdfReportController extends Controller
 
         $filename = 'daily_sales_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -386,7 +391,7 @@ class PdfReportController extends Controller
 
         $filename = 'sales_summary_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -523,8 +528,8 @@ class PdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor(0, 0, 0);
         $period = date('F d, Y', strtotime($data['period']['start'] ?? $data['filters']['start_date'])) .
-                  ' - ' .
-                  date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
+            ' - ' .
+            date('F d, Y', strtotime($data['period']['end'] ?? $data['filters']['end_date']));
         $pdf->Cell(0, 6, $period, 0, 1, 'C');
 
         // Subtitle
@@ -892,519 +897,519 @@ class PdfReportController extends Controller
     }
 
 
-/**
- * =====================================================
- * REPORT 5: STOCK MOVEMENT REPORT (Detailed)
- * =====================================================
- * Comprehensive log of stock movements with filters
- */
-public function generateStockMovementReport(Request $request)
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'branch_id' => 'nullable|exists:branches,id',
-            'business_id' => 'nullable|exists:businesses,id',
-            'product_id' => 'nullable|exists:products,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'movement_type' => 'nullable|in:purchase,sale,adjustment,transfer_in,transfer_out,return_in,return_out',
-            'direction' => 'nullable|in:stock_in,stock_out,all',
-            'user_id' => 'nullable|exists:users,id',
-            'reference_type' => 'nullable|string',
-            'reason' => 'nullable|in:damaged,expired,theft,count_error,lost,found,other',
-            'sort_by' => 'nullable|in:date,quantity,product_name',
-            'sort_order' => 'nullable|in:asc,desc',
-            'search' => 'nullable|string',
-            'currency_code' => 'nullable|string|size:3',
-        ]);
+    /**
+     * =====================================================
+     * REPORT 5: STOCK MOVEMENT REPORT (Detailed)
+     * =====================================================
+     * Comprehensive log of stock movements with filters
+     */
+    public function generateStockMovementReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'branch_id' => 'nullable|exists:branches,id',
+                'business_id' => 'nullable|exists:businesses,id',
+                'product_id' => 'nullable|exists:products,id',
+                'category_id' => 'nullable|exists:categories,id',
+                'movement_type' => 'nullable|in:purchase,sale,adjustment,transfer_in,transfer_out,return_in,return_out',
+                'direction' => 'nullable|in:stock_in,stock_out,all',
+                'user_id' => 'nullable|exists:users,id',
+                'reference_type' => 'nullable|string',
+                'reason' => 'nullable|in:damaged,expired,theft,count_error,lost,found,other',
+                'sort_by' => 'nullable|in:date,quantity,product_name',
+                'sort_order' => 'nullable|in:asc,desc',
+                'search' => 'nullable|string',
+                'currency_code' => 'nullable|string|size:3',
+            ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
-        }
-
-        $reportData = $this->getStockMovementReportData($request);
-        return $this->generateStockMovementPDF($reportData);
-
-    } catch (\Exception $e) {
-        Log::error('Failed to generate stock movement report', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return serverErrorResponse('Failed to generate stock movement report', $e->getMessage());
-    }
-}
-
-/**
- * Get stock movement data with comprehensive filtering
- */
-private function getStockMovementReportData(Request $request)
-{
-    $user = Auth::user();
-
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
-
-    $businessId = $request->business_id ?? $user->business_id;
-    $branchId = $request->branch_id ?? $user->primary_branch_id;
-
-    // Build comprehensive query
-    $query = StockMovement::with(['product.category', 'branch', 'user'])
-        ->where('business_id', $businessId)
-        ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
-
-    // Apply filters
-    if ($branchId) {
-        $query->where('branch_id', $branchId);
-    }
-
-    if ($request->product_id) {
-        $query->where('product_id', $request->product_id);
-    }
-
-    if ($request->category_id) {
-        $query->whereHas('product', function($q) use ($request) {
-            $q->where('category_id', $request->category_id);
-        });
-    }
-
-    if ($request->movement_type) {
-        $query->where('movement_type', $request->movement_type);
-    }
-
-    if ($request->direction) {
-        if ($request->direction === 'stock_in') {
-            $query->where('quantity', '>', 0);
-        } elseif ($request->direction === 'stock_out') {
-            $query->where('quantity', '<', 0);
-        }
-    }
-
-    if ($request->user_id) {
-        $query->where('user_id', $request->user_id);
-    }
-
-    if ($request->reference_type) {
-        $query->where('reference_type', $request->reference_type);
-    }
-
-    if ($request->reason) {
-        $query->where('reason', $request->reason);
-    }
-
-    if ($request->search) {
-        $query->where(function($q) use ($request) {
-            $q->whereHas('product', function($pq) use ($request) {
-                $pq->where('name', 'like', "%{$request->search}%")
-                   ->orWhere('sku', 'like', "%{$request->search}%");
-            })->orWhere('notes', 'like', "%{$request->search}%");
-        });
-    }
-
-    // Sorting
-    $sortBy = $request->sort_by ?? 'date';
-    $sortOrder = $request->sort_order ?? 'desc';
-
-    switch ($sortBy) {
-        case 'date':
-            $query->orderBy('created_at', $sortOrder);
-            break;
-        case 'quantity':
-            $query->orderBy('quantity', $sortOrder);
-            break;
-        case 'product_name':
-            $query->join('products', 'stock_movements.product_id', '=', 'products.id')
-                  ->orderBy('products.name', $sortOrder)
-                  ->select('stock_movements.*');
-            break;
-        default:
-            $query->orderBy('created_at', $sortOrder);
-            break;
-    }
-
-    $movements = $query->get();
-
-    // Calculate summary metrics
-    $summary = [
-        'total_movements' => $movements->count(),
-        'stock_in_movements' => $movements->where('quantity', '>', 0)->count(),
-        'stock_out_movements' => $movements->where('quantity', '<', 0)->count(),
-        'total_stock_in' => $movements->where('quantity', '>', 0)->sum('quantity'),
-        'total_stock_out' => abs($movements->where('quantity', '<', 0)->sum('quantity')),
-        'net_movement' => $movements->sum('quantity'),
-        'total_cost_impact' => $movements->sum(function($movement) {
-            return $movement->quantity * $movement->unit_cost;
-        }),
-        'unique_products' => $movements->pluck('product_id')->unique()->count(),
-    ];
-
-    // Movement type breakdown
-    $typeBreakdown = $movements->groupBy('movement_type')->map(function($group) {
-        return [
-            'type' => $group->first()->movement_type,
-            'count' => $group->count(),
-            'total_quantity' => $group->sum('quantity'),
-            'positive_movements' => $group->where('quantity', '>', 0)->count(),
-            'negative_movements' => $group->where('quantity', '<', 0)->count(),
-        ];
-    })->values();
-
-    // Daily summary
-    $dailySummary = $movements->groupBy(function($movement) {
-        return $movement->created_at->format('Y-m-d');
-    })->map(function($dayMovements) {
-        return [
-            'date' => $dayMovements->first()->created_at->format('M d, Y'),
-            'total_movements' => $dayMovements->count(),
-            'stock_in' => $dayMovements->where('quantity', '>', 0)->sum('quantity'),
-            'stock_out' => abs($dayMovements->where('quantity', '<', 0)->sum('quantity')),
-            'net_change' => $dayMovements->sum('quantity'),
-        ];
-    })->values();
-
-    return [
-        'movements' => $movements,
-        'summary' => $summary,
-        'type_breakdown' => $typeBreakdown,
-        'daily_summary' => $dailySummary,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'period' => [
-            'start' => $request->start_date,
-            'end' => $request->end_date,
-        ],
-        'business' => $user->business,
-        'branch' => $branchId ? $user->primaryBranch : null,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
-
-/**
- * Generate Stock Movement PDF Report
- */
-private function generateStockMovementPDF($data)
-{
-    try {
-        $pdf = new \FPDF('L', 'mm', 'A4');
-        $pdf->SetAutoPageBreak(true, 15);
-        $pdf->AddPage();
-
-        // Define colors
-        $matisse = [36, 116, 172];
-        $sun = [252, 172, 28];
-        $success = [40, 167, 69];
-        $danger = [220, 53, 69];
-
-        // ===== HEADER =====
-        $pdf->SetY(15);
-        $pdf->SetFont('Arial', 'B', 14);
-        $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->Cell(0, 8, $data['business']->name ?? 'Your Company', 0, 1, 'C');
-        $pdf->Ln(3);
-
-        $pdf->SetFont('Arial', 'B', 20);
-        $pdf->Cell(0, 10, 'STOCK MOVEMENT REPORT', 0, 1, 'C');
-        $pdf->Ln(2);
-
-        $pdf->SetFont('Arial', 'B', 11);
-        $pdf->SetTextColor(0, 0, 0);
-        $period = date('F d, Y', strtotime($data['period']['start'])) . ' - ' . date('F d, Y', strtotime($data['period']['end']));
-        $pdf->Cell(0, 6, $period, 0, 1, 'C');
-
-        $pdf->SetFont('Arial', '', 9);
-        $pdf->SetTextColor(100, 100, 100);
-        $filterText = 'All Movements';
-        if ($data['branch']) {
-            $filterText = 'Branch: ' . $data['branch']->name;
-        }
-        $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
-        $pdf->Ln(8);
-
-        // ===== SUMMARY BOXES =====
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->Cell(0, 7, 'MOVEMENT SUMMARY', 0, 1);
-        $pdf->Ln(2);
-
-        $boxW = 65;
-        $boxH = 22;
-        $gap = 5;
-        $startX = 15;
-        $y = $pdf->GetY();
-
-        // Row 1 - 4 boxes
-        // Box 1: Total Movements
-        $pdf->SetDrawColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->SetLineWidth(0.4);
-        $pdf->Rect($startX, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->SetXY($startX, $y + 3);
-        $pdf->Cell($boxW, 5, 'TOTAL MOVEMENTS', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX, $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['total_movements']), 0, 0, 'C');
-
-        // Box 2: Stock In
-        $pdf->SetDrawColor($success[0], $success[1], $success[2]);
-        $pdf->Rect($startX + ($boxW + $gap), $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($success[0], $success[1], $success[2]);
-        $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-        $pdf->Cell($boxW, 5, 'STOCK IN', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['stock_in_movements']) . ' moves', 0, 0, 'C');
-
-        // Box 3: Stock Out
-        $pdf->SetDrawColor($danger[0], $danger[1], $danger[2]);
-        $pdf->Rect($startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
-        $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-        $pdf->Cell($boxW, 5, 'STOCK OUT', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['stock_out_movements']) . ' moves', 0, 0, 'C');
-
-        // Box 4: Unique Products
-        $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
-        $pdf->Rect($startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-        $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-        $pdf->Cell($boxW, 5, 'UNIQUE PRODUCTS', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['unique_products']), 0, 0, 'C');
-
-        // Row 2 - 4 boxes
-        $y += $boxH + $gap;
-
-        // Box 5: Total In Qty
-        $pdf->SetDrawColor($success[0], $success[1], $success[2]);
-        $pdf->Rect($startX, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($success[0], $success[1], $success[2]);
-        $pdf->SetXY($startX, $y + 3);
-        $pdf->Cell($boxW, 5, 'TOTAL IN QTY', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX, $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_in'], 2), 0, 0, 'C');
-
-        // Box 6: Total Out Qty
-        $pdf->SetDrawColor($danger[0], $danger[1], $danger[2]);
-        $pdf->Rect($startX + ($boxW + $gap), $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
-        $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
-        $pdf->Cell($boxW, 5, 'TOTAL OUT QTY', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_out'], 2), 0, 0, 'C');
-
-        // Box 7: Net Movement
-        $pdf->SetDrawColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->Rect($startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-        $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
-        $pdf->Cell($boxW, 5, 'NET MOVEMENT', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
-        $pdf->Cell($boxW, 6, number_format($data['summary']['net_movement'], 2), 0, 0, 'C');
-
-        // Box 8: Cost Impact
-        $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
-        $pdf->Rect($startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'D');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-        $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
-        $pdf->Cell($boxW, 5, 'COST IMPACT', 0, 0, 'C');
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
-        $pdf->Cell($boxW, 6, $data['currency'] . ' ' . number_format($data['summary']['total_cost_impact'], 0), 0, 0, 'C');
-
-        $pdf->SetY($y + $boxH + 8);
-
-        // ===== MOVEMENT TYPE BREAKDOWN =====
-        if ($data['type_breakdown']->isNotEmpty()) {
-            $pdf->SetFont('Arial', 'B', 11);
-            $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 6, 'BREAKDOWN BY MOVEMENT TYPE', 0, 1);
-            $pdf->Ln(1);
-
-            $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->SetTextColor(255, 255, 255);
-            $pdf->SetFont('Arial', 'B', 9);
-
-            $pdf->Cell(80, 8, 'Movement Type', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Total Count', 1, 0, 'C', true);
-            $pdf->Cell(45, 8, 'Total Quantity', 1, 0, 'C', true);
-            $pdf->Cell(35, 8, 'Stock In', 1, 0, 'C', true);
-            $pdf->Cell(35, 8, 'Stock Out', 1, 1, 'C', true);
-
-            $pdf->SetFont('Arial', '', 8);
-            $pdf->SetTextColor(0, 0, 0);
-
-            $fill = false;
-            foreach ($data['type_breakdown'] as $breakdown) {
-                $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-                $pdf->Cell(80, 6, ucfirst(str_replace('_', ' ', $breakdown['type'])), 1, 0, 'L', $fill);
-                $pdf->Cell(40, 6, number_format($breakdown['count']), 1, 0, 'C', $fill);
-                $pdf->Cell(45, 6, number_format($breakdown['total_quantity'], 2), 1, 0, 'R', $fill);
-                $pdf->Cell(35, 6, number_format($breakdown['positive_movements']), 1, 0, 'C', $fill);
-                $pdf->Cell(35, 6, number_format($breakdown['negative_movements']), 1, 1, 'C', $fill);
-                $fill = !$fill;
+            if ($validator->fails()) {
+                return validationErrorResponse($validator->errors());
             }
-            $pdf->Ln(5);
+
+            $reportData = $this->getStockMovementReportData($request);
+            return $this->generateStockMovementPDF($reportData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate stock movement report', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return serverErrorResponse('Failed to generate stock movement report', $e->getMessage());
+        }
+    }
+
+    /**
+     * Get stock movement data with comprehensive filtering
+     */
+    private function getStockMovementReportData(Request $request)
+    {
+        $user = Auth::user();
+
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
+
+        $businessId = $request->business_id ?? $user->business_id;
+        $branchId = $request->branch_id ?? $user->primary_branch_id;
+
+        // Build comprehensive query
+        $query = StockMovement::with(['product.category', 'branch', 'user'])
+            ->where('business_id', $businessId)
+            ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+
+        // Apply filters
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
         }
 
-        // ===== DAILY SUMMARY =====
-        if ($data['daily_summary']->isNotEmpty()) {
+        if ($request->product_id) {
+            $query->where('product_id', $request->product_id);
+        }
+
+        if ($request->category_id) {
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+
+        if ($request->movement_type) {
+            $query->where('movement_type', $request->movement_type);
+        }
+
+        if ($request->direction) {
+            if ($request->direction === 'stock_in') {
+                $query->where('quantity', '>', 0);
+            } elseif ($request->direction === 'stock_out') {
+                $query->where('quantity', '<', 0);
+            }
+        }
+
+        if ($request->user_id) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->reference_type) {
+            $query->where('reference_type', $request->reference_type);
+        }
+
+        if ($request->reason) {
+            $query->where('reason', $request->reason);
+        }
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('product', function ($pq) use ($request) {
+                    $pq->where('name', 'like', "%{$request->search}%")
+                        ->orWhere('sku', 'like', "%{$request->search}%");
+                })->orWhere('notes', 'like', "%{$request->search}%");
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->sort_by ?? 'date';
+        $sortOrder = $request->sort_order ?? 'desc';
+
+        switch ($sortBy) {
+            case 'date':
+                $query->orderBy('created_at', $sortOrder);
+                break;
+            case 'quantity':
+                $query->orderBy('quantity', $sortOrder);
+                break;
+            case 'product_name':
+                $query->join('products', 'stock_movements.product_id', '=', 'products.id')
+                    ->orderBy('products.name', $sortOrder)
+                    ->select('stock_movements.*');
+                break;
+            default:
+                $query->orderBy('created_at', $sortOrder);
+                break;
+        }
+
+        $movements = $query->get();
+
+        // Calculate summary metrics
+        $summary = [
+            'total_movements' => $movements->count(),
+            'stock_in_movements' => $movements->where('quantity', '>', 0)->count(),
+            'stock_out_movements' => $movements->where('quantity', '<', 0)->count(),
+            'total_stock_in' => $movements->where('quantity', '>', 0)->sum('quantity'),
+            'total_stock_out' => abs($movements->where('quantity', '<', 0)->sum('quantity')),
+            'net_movement' => $movements->sum('quantity'),
+            'total_cost_impact' => $movements->sum(function ($movement) {
+                return $movement->quantity * $movement->unit_cost;
+            }),
+            'unique_products' => $movements->pluck('product_id')->unique()->count(),
+        ];
+
+        // Movement type breakdown
+        $typeBreakdown = $movements->groupBy('movement_type')->map(function ($group) {
+            return [
+                'type' => $group->first()->movement_type,
+                'count' => $group->count(),
+                'total_quantity' => $group->sum('quantity'),
+                'positive_movements' => $group->where('quantity', '>', 0)->count(),
+                'negative_movements' => $group->where('quantity', '<', 0)->count(),
+            ];
+        })->values();
+
+        // Daily summary
+        $dailySummary = $movements->groupBy(function ($movement) {
+            return $movement->created_at->format('Y-m-d');
+        })->map(function ($dayMovements) {
+            return [
+                'date' => $dayMovements->first()->created_at->format('M d, Y'),
+                'total_movements' => $dayMovements->count(),
+                'stock_in' => $dayMovements->where('quantity', '>', 0)->sum('quantity'),
+                'stock_out' => abs($dayMovements->where('quantity', '<', 0)->sum('quantity')),
+                'net_change' => $dayMovements->sum('quantity'),
+            ];
+        })->values();
+
+        return [
+            'movements' => $movements,
+            'summary' => $summary,
+            'type_breakdown' => $typeBreakdown,
+            'daily_summary' => $dailySummary,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'period' => [
+                'start' => $request->start_date,
+                'end' => $request->end_date,
+            ],
+            'business' => $user->business,
+            'branch' => $branchId ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * Generate Stock Movement PDF Report
+     */
+    private function generateStockMovementPDF($data)
+    {
+        try {
+            $pdf = new \FPDF('L', 'mm', 'A4');
+            $pdf->SetAutoPageBreak(true, 15);
+            $pdf->AddPage();
+
+            // Define colors
+            $matisse = [36, 116, 172];
+            $sun = [252, 172, 28];
+            $success = [40, 167, 69];
+            $danger = [220, 53, 69];
+
+            // ===== HEADER =====
+            $pdf->SetY(15);
+            $pdf->SetFont('Arial', 'B', 14);
+            $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
+            $pdf->Cell(0, 8, $data['business']->name ?? 'Your Company', 0, 1, 'C');
+            $pdf->Ln(3);
+
+            $pdf->SetFont('Arial', 'B', 20);
+            $pdf->Cell(0, 10, 'STOCK MOVEMENT REPORT', 0, 1, 'C');
+            $pdf->Ln(2);
+
             $pdf->SetFont('Arial', 'B', 11);
+            $pdf->SetTextColor(0, 0, 0);
+            $period = date('F d, Y', strtotime($data['period']['start'])) . ' - ' . date('F d, Y', strtotime($data['period']['end']));
+            $pdf->Cell(0, 6, $period, 0, 1, 'C');
+
+            $pdf->SetFont('Arial', '', 9);
+            $pdf->SetTextColor(100, 100, 100);
+            $filterText = 'All Movements';
+            if ($data['branch']) {
+                $filterText = 'Branch: ' . $data['branch']->name;
+            }
+            $pdf->Cell(0, 5, 'Filter: ' . $filterText, 0, 1, 'C');
+            $pdf->Ln(8);
+
+            // ===== SUMMARY BOXES =====
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
+            $pdf->Cell(0, 7, 'MOVEMENT SUMMARY', 0, 1);
+            $pdf->Ln(2);
+
+            $boxW = 65;
+            $boxH = 22;
+            $gap = 5;
+            $startX = 15;
+            $y = $pdf->GetY();
+
+            // Row 1 - 4 boxes
+            // Box 1: Total Movements
+            $pdf->SetDrawColor($matisse[0], $matisse[1], $matisse[2]);
+            $pdf->SetLineWidth(0.4);
+            $pdf->Rect($startX, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
+            $pdf->SetXY($startX, $y + 3);
+            $pdf->Cell($boxW, 5, 'TOTAL MOVEMENTS', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX, $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['total_movements']), 0, 0, 'C');
+
+            // Box 2: Stock In
+            $pdf->SetDrawColor($success[0], $success[1], $success[2]);
+            $pdf->Rect($startX + ($boxW + $gap), $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($success[0], $success[1], $success[2]);
+            $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
+            $pdf->Cell($boxW, 5, 'STOCK IN', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_in_movements']) . ' moves', 0, 0, 'C');
+
+            // Box 3: Stock Out
+            $pdf->SetDrawColor($danger[0], $danger[1], $danger[2]);
+            $pdf->Rect($startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
+            $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
+            $pdf->Cell($boxW, 5, 'STOCK OUT', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['stock_out_movements']) . ' moves', 0, 0, 'C');
+
+            // Box 4: Unique Products
+            $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
+            $pdf->Rect($startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
-            $pdf->Cell(0, 6, 'DAILY MOVEMENT SUMMARY', 0, 1);
-            $pdf->Ln(1);
+            $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
+            $pdf->Cell($boxW, 5, 'UNIQUE PRODUCTS', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['unique_products']), 0, 0, 'C');
 
-            $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
-            $pdf->SetTextColor(255, 255, 255);
-            $pdf->SetFont('Arial', 'B', 9);
+            // Row 2 - 4 boxes
+            $y += $boxH + $gap;
 
-            $pdf->Cell(60, 8, 'Date', 1, 0, 'C', true);
-            $pdf->Cell(45, 8, 'Total Movements', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Stock In Qty', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Stock Out Qty', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Net Change', 1, 1, 'C', true);
+            // Box 5: Total In Qty
+            $pdf->SetDrawColor($success[0], $success[1], $success[2]);
+            $pdf->Rect($startX, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($success[0], $success[1], $success[2]);
+            $pdf->SetXY($startX, $y + 3);
+            $pdf->Cell($boxW, 5, 'TOTAL IN QTY', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX, $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_in'], 2), 0, 0, 'C');
 
-            $pdf->SetFont('Arial', '', 8);
-            $pdf->SetTextColor(0, 0, 0);
+            // Box 6: Total Out Qty
+            $pdf->SetDrawColor($danger[0], $danger[1], $danger[2]);
+            $pdf->Rect($startX + ($boxW + $gap), $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($danger[0], $danger[1], $danger[2]);
+            $pdf->SetXY($startX + ($boxW + $gap), $y + 3);
+            $pdf->Cell($boxW, 5, 'TOTAL OUT QTY', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap), $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['total_stock_out'], 2), 0, 0, 'C');
 
-            $fill = false;
-            foreach ($data['daily_summary']->take(10) as $day) {
-                $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-                $pdf->Cell(60, 6, $day['date'], 1, 0, 'L', $fill);
-                $pdf->Cell(45, 6, number_format($day['total_movements']), 1, 0, 'C', $fill);
-                $pdf->Cell(40, 6, number_format($day['stock_in'], 2), 1, 0, 'R', $fill);
-                $pdf->Cell(40, 6, number_format($day['stock_out'], 2), 1, 0, 'R', $fill);
-                $pdf->Cell(40, 6, number_format($day['net_change'], 2), 1, 1, 'R', $fill);
-                $fill = !$fill;
-            }
-            $pdf->Ln(5);
-        }
-
-        // ===== DETAILED MOVEMENTS TABLE =====
-        if ($data['movements']->isEmpty()) {
-            $pdf->SetFont('Arial', 'I', 11);
-            $pdf->SetTextColor(128, 128, 128);
-            $pdf->Cell(0, 10, 'No stock movements found for this period.', 0, 1, 'C');
-        } else {
-            $pdf->SetFont('Arial', 'B', 11);
+            // Box 7: Net Movement
+            $pdf->SetDrawColor($matisse[0], $matisse[1], $matisse[2]);
+            $pdf->Rect($startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
             $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->Cell(0, 6, 'DETAILED MOVEMENT HISTORY', 0, 1);
-            $pdf->Ln(1);
+            $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 3);
+            $pdf->Cell($boxW, 5, 'NET MOVEMENT', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap) * 2, $y + 11);
+            $pdf->Cell($boxW, 6, number_format($data['summary']['net_movement'], 2), 0, 0, 'C');
 
-            $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
-            $pdf->SetTextColor(255, 255, 255);
-            $pdf->SetFont('Arial', 'B', 7);
+            // Box 8: Cost Impact
+            $pdf->SetDrawColor($sun[0], $sun[1], $sun[2]);
+            $pdf->Rect($startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'D');
+            $pdf->SetFont('Arial', 'B', 8);
+            $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
+            $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 3);
+            $pdf->Cell($boxW, 5, 'COST IMPACT', 0, 0, 'C');
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetXY($startX + ($boxW + $gap) * 3, $y + 11);
+            $pdf->Cell($boxW, 6, $data['currency'] . ' ' . number_format($data['summary']['total_cost_impact'], 0), 0, 0, 'C');
 
-            $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
-            $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
-            $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-            $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
-            $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
-            $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
-            $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
+            $pdf->SetY($y + $boxH + 8);
 
-            $pdf->SetFont('Arial', '', 6);
-            $pdf->SetTextColor(0, 0, 0);
+            // ===== MOVEMENT TYPE BREAKDOWN =====
+            if ($data['type_breakdown']->isNotEmpty()) {
+                $pdf->SetFont('Arial', 'B', 11);
+                $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
+                $pdf->Cell(0, 6, 'BREAKDOWN BY MOVEMENT TYPE', 0, 1);
+                $pdf->Ln(1);
 
-            $fill = false;
-            foreach ($data['movements']->take(50) as $movement) {
-                $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
+                $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 9);
 
-                $date = $movement->created_at->format('m/d H:i');
-                $productName = substr($movement->product->name ?? 'Unknown', 0, 25);
-                $branchName = substr($movement->branch->name ?? 'N/A', 0, 15);
-                $movementType = substr(str_replace('_', ' ', $movement->movement_type), 0, 15);
-                $quantity = ($movement->quantity >= 0 ? '+' : '') . number_format($movement->quantity, 1);
-                $userName = substr($movement->user->name ?? 'System', 0, 15);
-                $reference = substr($movement->reference_type ?? 'Manual', -15);
+                $pdf->Cell(80, 8, 'Movement Type', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Total Count', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Total Quantity', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Stock In', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Stock Out', 1, 1, 'C', true);
 
-                $pdf->Cell(25, 6, $date, 1, 0, 'C', $fill);
-                $pdf->Cell(55, 6, $productName, 1, 0, 'L', $fill);
-                $pdf->Cell(30, 6, $branchName, 1, 0, 'L', $fill);
-                $pdf->Cell(30, 6, $movementType, 1, 0, 'C', $fill);
-                $pdf->Cell(25, 6, $quantity, 1, 0, 'R', $fill);
-                $pdf->Cell(25, 6, number_format($movement->previous_quantity, 1), 1, 0, 'R', $fill);
-                $pdf->Cell(25, 6, number_format($movement->new_quantity, 1), 1, 0, 'R', $fill);
-                $pdf->Cell(30, 6, $userName, 1, 0, 'L', $fill);
-                $pdf->Cell(35, 6, $reference, 1, 1, 'L', $fill);
+                $pdf->SetFont('Arial', '', 8);
+                $pdf->SetTextColor(0, 0, 0);
 
-                $fill = !$fill;
+                $fill = false;
+                foreach ($data['type_breakdown'] as $breakdown) {
+                    $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+                    $pdf->Cell(80, 6, ucfirst(str_replace('_', ' ', $breakdown['type'])), 1, 0, 'L', $fill);
+                    $pdf->Cell(40, 6, number_format($breakdown['count']), 1, 0, 'C', $fill);
+                    $pdf->Cell(45, 6, number_format($breakdown['total_quantity'], 2), 1, 0, 'R', $fill);
+                    $pdf->Cell(35, 6, number_format($breakdown['positive_movements']), 1, 0, 'C', $fill);
+                    $pdf->Cell(35, 6, number_format($breakdown['negative_movements']), 1, 1, 'C', $fill);
+                    $fill = !$fill;
+                }
+                $pdf->Ln(5);
+            }
 
-                if ($pdf->GetY() > 180) {
-                    $pdf->AddPage();
-                    // Repeat header
-                    $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
-                    $pdf->SetTextColor(255, 255, 255);
-                    $pdf->SetFont('Arial', 'B', 7);
+            // ===== DAILY SUMMARY =====
+            if ($data['daily_summary']->isNotEmpty()) {
+                $pdf->SetFont('Arial', 'B', 11);
+                $pdf->SetTextColor($sun[0], $sun[1], $sun[2]);
+                $pdf->Cell(0, 6, 'DAILY MOVEMENT SUMMARY', 0, 1);
+                $pdf->Ln(1);
 
-                    $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
-                    $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
-                    $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
-                    $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
-                    $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
-                    $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
-                    $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
-                    $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
-                    $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
+                $pdf->SetFillColor($sun[0], $sun[1], $sun[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 9);
 
-                    $pdf->SetFont('Arial', '', 6);
-                    $pdf->SetTextColor(0, 0, 0);
+                $pdf->Cell(60, 8, 'Date', 1, 0, 'C', true);
+                $pdf->Cell(45, 8, 'Total Movements', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Stock In Qty', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Stock Out Qty', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Net Change', 1, 1, 'C', true);
+
+                $pdf->SetFont('Arial', '', 8);
+                $pdf->SetTextColor(0, 0, 0);
+
+                $fill = false;
+                foreach ($data['daily_summary']->take(10) as $day) {
+                    $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+                    $pdf->Cell(60, 6, $day['date'], 1, 0, 'L', $fill);
+                    $pdf->Cell(45, 6, number_format($day['total_movements']), 1, 0, 'C', $fill);
+                    $pdf->Cell(40, 6, number_format($day['stock_in'], 2), 1, 0, 'R', $fill);
+                    $pdf->Cell(40, 6, number_format($day['stock_out'], 2), 1, 0, 'R', $fill);
+                    $pdf->Cell(40, 6, number_format($day['net_change'], 2), 1, 1, 'R', $fill);
+                    $fill = !$fill;
+                }
+                $pdf->Ln(5);
+            }
+
+            // ===== DETAILED MOVEMENTS TABLE =====
+            if ($data['movements']->isEmpty()) {
+                $pdf->SetFont('Arial', 'I', 11);
+                $pdf->SetTextColor(128, 128, 128);
+                $pdf->Cell(0, 10, 'No stock movements found for this period.', 0, 1, 'C');
+            } else {
+                $pdf->SetFont('Arial', 'B', 11);
+                $pdf->SetTextColor($matisse[0], $matisse[1], $matisse[2]);
+                $pdf->Cell(0, 6, 'DETAILED MOVEMENT HISTORY', 0, 1);
+                $pdf->Ln(1);
+
+                $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 7);
+
+                $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
+                $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
+                $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
+                $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
+                $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
+
+                $pdf->SetFont('Arial', '', 6);
+                $pdf->SetTextColor(0, 0, 0);
+
+                $fill = false;
+                foreach ($data['movements']->take(50) as $movement) {
+                    $pdf->SetFillColor($fill ? 248 : 255, $fill ? 248 : 255, $fill ? 248 : 255);
+
+                    $date = $movement->created_at->format('m/d H:i');
+                    $productName = substr($movement->product->name ?? 'Unknown', 0, 25);
+                    $branchName = substr($movement->branch->name ?? 'N/A', 0, 15);
+                    $movementType = substr(str_replace('_', ' ', $movement->movement_type), 0, 15);
+                    $quantity = ($movement->quantity >= 0 ? '+' : '') . number_format($movement->quantity, 1);
+                    $userName = substr($movement->user->name ?? 'System', 0, 15);
+                    $reference = substr($movement->reference_type ?? 'Manual', -15);
+
+                    $pdf->Cell(25, 6, $date, 1, 0, 'C', $fill);
+                    $pdf->Cell(55, 6, $productName, 1, 0, 'L', $fill);
+                    $pdf->Cell(30, 6, $branchName, 1, 0, 'L', $fill);
+                    $pdf->Cell(30, 6, $movementType, 1, 0, 'C', $fill);
+                    $pdf->Cell(25, 6, $quantity, 1, 0, 'R', $fill);
+                    $pdf->Cell(25, 6, number_format($movement->previous_quantity, 1), 1, 0, 'R', $fill);
+                    $pdf->Cell(25, 6, number_format($movement->new_quantity, 1), 1, 0, 'R', $fill);
+                    $pdf->Cell(30, 6, $userName, 1, 0, 'L', $fill);
+                    $pdf->Cell(35, 6, $reference, 1, 1, 'L', $fill);
+
+                    $fill = !$fill;
+
+                    if ($pdf->GetY() > 180) {
+                        $pdf->AddPage();
+                        // Repeat header
+                        $pdf->SetFillColor($matisse[0], $matisse[1], $matisse[2]);
+                        $pdf->SetTextColor(255, 255, 255);
+                        $pdf->SetFont('Arial', 'B', 7);
+
+                        $pdf->Cell(25, 8, 'Date', 1, 0, 'C', true);
+                        $pdf->Cell(55, 8, 'Product', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Branch', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'Movement Type', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Quantity', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'Before', 1, 0, 'C', true);
+                        $pdf->Cell(25, 8, 'After', 1, 0, 'C', true);
+                        $pdf->Cell(30, 8, 'User', 1, 0, 'C', true);
+                        $pdf->Cell(35, 8, 'Reference', 1, 1, 'C', true);
+
+                        $pdf->SetFont('Arial', '', 6);
+                        $pdf->SetTextColor(0, 0, 0);
+                    }
+                }
+
+                if ($data['movements']->count() > 50) {
+                    $pdf->Ln(2);
+                    $pdf->SetFont('Arial', 'I', 8);
+                    $pdf->SetTextColor(100, 100, 100);
+                    $pdf->Cell(0, 5, 'Note: Showing first 50 movements. Total movements: ' . number_format($data['movements']->count()), 0, 1, 'C');
                 }
             }
 
-            if ($data['movements']->count() > 50) {
-                $pdf->Ln(2);
-                $pdf->SetFont('Arial', 'I', 8);
-                $pdf->SetTextColor(100, 100, 100);
-                $pdf->Cell(0, 5, 'Note: Showing first 50 movements. Total movements: ' . number_format($data['movements']->count()), 0, 1, 'C');
-            }
+            // ===== FOOTER =====
+            $pdf->SetY(-25);
+            $pdf->SetFont('Arial', 'B', 9);
+            $pdf->SetTextColor(36, 116, 172);
+            $businessText = $data['business']->name . ($data['branch'] ? ' - ' . $data['branch']->name : '');
+            $pdf->Cell(0, 5, $businessText, 0, 1, 'C');
+
+            $pdf->SetFont('Arial', 'I', 8);
+            $pdf->SetTextColor(120, 120, 120);
+            $pdf->Cell(0, 4, 'Generated by: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
+            $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
+            $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
+
+            $filename = 'stock_movement_report_' . date('Y-m-d') . '.pdf';
+            return response()->stream(
+                fn() => print ($pdf->Output('S')),
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"'
+                ]
+            );
+
+        } catch (\Exception $e) {
+            Log::error('PDF Generation Error: ' . $e->getMessage());
+            return serverErrorResponse('Failed to generate PDF', $e->getMessage());
         }
-
-        // ===== FOOTER =====
-        $pdf->SetY(-25);
-        $pdf->SetFont('Arial', 'B', 9);
-        $pdf->SetTextColor(36, 116, 172);
-        $businessText = $data['business']->name . ($data['branch'] ? ' - ' . $data['branch']->name : '');
-        $pdf->Cell(0, 5, $businessText, 0, 1, 'C');
-
-        $pdf->SetFont('Arial', 'I', 8);
-        $pdf->SetTextColor(120, 120, 120);
-        $pdf->Cell(0, 4, 'Generated by: ' . $data['generated_by'] . ' | ' . $data['generated_at'], 0, 1, 'C');
-        $pdf->Cell(0, 4, 'Page ' . $pdf->PageNo(), 0, 1, 'C');
-        $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
-
-        $filename = 'stock_movement_report_' . date('Y-m-d') . '.pdf';
-        return response()->stream(
-            fn() => print($pdf->Output('S')),
-            200,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $filename . '"'
-            ]
-        );
-
-    } catch (\Exception $e) {
-        Log::error('PDF Generation Error: ' . $e->getMessage());
-        return serverErrorResponse('Failed to generate PDF', $e->getMessage());
     }
-}
 
 
 

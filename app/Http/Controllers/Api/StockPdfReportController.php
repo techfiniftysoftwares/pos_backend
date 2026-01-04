@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class StockPdfReportController extends Controller
 {
@@ -110,16 +110,16 @@ class StockPdfReportController extends Controller
         }
 
         if ($request->category_id) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('category_id', $request->category_id);
             });
         }
 
         if ($request->search) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('sku', 'like', "%{$request->search}%")
-                  ->orWhere('barcode', 'like', "%{$request->search}%");
+                    ->orWhere('sku', 'like', "%{$request->search}%")
+                    ->orWhere('barcode', 'like', "%{$request->search}%");
             });
         }
 
@@ -138,7 +138,7 @@ class StockPdfReportController extends Controller
         }
 
         if ($request->tracked_only) {
-            $query->whereHas('product', function($q) {
+            $query->whereHas('product', function ($q) {
                 $q->where('track_inventory', true);
             });
         }
@@ -147,7 +147,7 @@ class StockPdfReportController extends Controller
 
         // Filter by minimum value if specified
         if ($request->min_value) {
-            $stocks = $stocks->filter(function($stock) use ($request) {
+            $stocks = $stocks->filter(function ($stock) use ($request) {
                 return $stock->stock_value >= $request->min_value;
             });
         }
@@ -156,7 +156,7 @@ class StockPdfReportController extends Controller
         $sortBy = $request->sort_by ?? 'product_name';
         $sortOrder = $request->sort_order ?? 'asc';
 
-        $stocks = $stocks->sortBy(function($stock) use ($sortBy) {
+        $stocks = $stocks->sortBy(function ($stock) use ($sortBy) {
             switch ($sortBy) {
                 case 'quantity':
                     return $stock->quantity;
@@ -185,7 +185,7 @@ class StockPdfReportController extends Controller
 
         // Category breakdown
         $categoryBreakdown = $stocks->groupBy('product.category.name')
-            ->map(function($group) {
+            ->map(function ($group) {
                 return [
                     'name' => $group->first()->product->category->name ?? 'Uncategorized',
                     'count' => $group->count(),
@@ -481,7 +481,7 @@ class StockPdfReportController extends Controller
 
             $filename = 'stock_level_report_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -553,7 +553,7 @@ class StockPdfReportController extends Controller
         }
 
         if ($request->category_id) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('category_id', $request->category_id);
             });
         }
@@ -576,7 +576,7 @@ class StockPdfReportController extends Controller
         $topValueItems = $stocks->sortByDesc('stock_value')->take(10);
 
         // Category analysis
-        $categoryAnalysis = $stocks->groupBy('product.category.name')->map(function($group) {
+        $categoryAnalysis = $stocks->groupBy('product.category.name')->map(function ($group) {
             $categoryName = $group->first()->product->category->name ?? 'Uncategorized';
             return [
                 'name' => $categoryName,
@@ -590,7 +590,7 @@ class StockPdfReportController extends Controller
         // Branch comparison
         $branchComparison = collect();
         if ($request->include_branch_comparison && !$branchId) {
-            $branchComparison = $stocks->groupBy('branch.name')->map(function($group) {
+            $branchComparison = $stocks->groupBy('branch.name')->map(function ($group) {
                 return [
                     'name' => $group->first()->branch->name,
                     'product_count' => $group->count(),
@@ -866,7 +866,7 @@ class StockPdfReportController extends Controller
 
             $filename = 'stock_summary_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -952,7 +952,7 @@ class StockPdfReportController extends Controller
         }
 
         if ($request->category_id) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('category_id', $request->category_id);
             });
         }
@@ -982,10 +982,10 @@ class StockPdfReportController extends Controller
         }
 
         if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->whereHas('product', function($pq) use ($request) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('product', function ($pq) use ($request) {
                     $pq->where('name', 'like', "%{$request->search}%")
-                       ->orWhere('sku', 'like', "%{$request->search}%");
+                        ->orWhere('sku', 'like', "%{$request->search}%");
                 })->orWhere('notes', 'like', "%{$request->search}%");
             });
         }
@@ -996,8 +996,8 @@ class StockPdfReportController extends Controller
 
         if ($sortBy === 'product_name') {
             $query->join('products', 'stock_movements.product_id', '=', 'products.id')
-                  ->orderBy('products.name', $sortOrder)
-                  ->select('stock_movements.*');
+                ->orderBy('products.name', $sortOrder)
+                ->select('stock_movements.*');
         } else {
             $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
             $query->orderBy($orderColumn, $sortOrder);
@@ -1013,14 +1013,14 @@ class StockPdfReportController extends Controller
             'total_stock_in' => $movements->where('quantity', '>', 0)->sum('quantity'),
             'total_stock_out' => abs($movements->where('quantity', '<', 0)->sum('quantity')),
             'net_movement' => $movements->sum('quantity'),
-            'total_cost_impact' => $movements->sum(function($movement) {
+            'total_cost_impact' => $movements->sum(function ($movement) {
                 return $movement->quantity * $movement->unit_cost;
             }),
             'unique_products' => $movements->pluck('product_id')->unique()->count(),
         ];
 
         // Movement type breakdown
-        $typeBreakdown = $movements->groupBy('movement_type')->map(function($group) {
+        $typeBreakdown = $movements->groupBy('movement_type')->map(function ($group) {
             return [
                 'type' => $group->first()->movement_type,
                 'count' => $group->count(),
@@ -1031,9 +1031,9 @@ class StockPdfReportController extends Controller
         })->values();
 
         // Daily summary
-        $dailySummary = $movements->groupBy(function($movement) {
+        $dailySummary = $movements->groupBy(function ($movement) {
             return $movement->created_at->format('Y-m-d');
-        })->map(function($dayMovements) {
+        })->map(function ($dayMovements) {
             return [
                 'date' => $dayMovements->first()->created_at->format('M d, Y'),
                 'total_movements' => $dayMovements->count(),
@@ -1372,7 +1372,7 @@ class StockPdfReportController extends Controller
 
             $filename = 'stock_movement_report_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -1385,5 +1385,5 @@ class StockPdfReportController extends Controller
             return serverErrorResponse('Failed to generate PDF', $e->getMessage());
         }
     }
-    
+
 }

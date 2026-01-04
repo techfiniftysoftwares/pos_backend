@@ -22,6 +22,7 @@ class Purchase extends Model
         'tax_amount',
         'total_amount',
         'currency',
+        'currency_id', // Added currency_id
         'exchange_rate',
         'status',
         'payment_status',
@@ -57,6 +58,11 @@ class Purchase extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function currencyModel()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 
     public function items()

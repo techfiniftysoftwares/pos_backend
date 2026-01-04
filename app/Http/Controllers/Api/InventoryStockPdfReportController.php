@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class InventoryStockPdfReportController extends Controller
 {
@@ -113,16 +113,16 @@ class InventoryStockPdfReportController extends Controller
         }
 
         if ($request->category_id) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('category_id', $request->category_id);
             });
         }
 
         if ($request->search) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('sku', 'like', "%{$request->search}%")
-                  ->orWhere('barcode', 'like', "%{$request->search}%");
+                    ->orWhere('sku', 'like', "%{$request->search}%")
+                    ->orWhere('barcode', 'like', "%{$request->search}%");
             });
         }
 
@@ -133,7 +133,7 @@ class InventoryStockPdfReportController extends Controller
         $stocks = $query->get();
 
         // Apply valuation method
-        $stocks = $stocks->map(function($stock) use ($valuationMethod) {
+        $stocks = $stocks->map(function ($stock) use ($valuationMethod) {
             $stock->valuation_cost = $this->calculateValuationCost($stock, $valuationMethod);
             $stock->valuation_value = $stock->quantity * $stock->valuation_cost;
             return $stock;
@@ -151,12 +151,16 @@ class InventoryStockPdfReportController extends Controller
         $sortBy = $request->sort_by ?? 'value';
         $sortOrder = $request->sort_order ?? 'desc';
 
-        $stocks = $stocks->sortBy(function($stock) use ($sortBy) {
+        $stocks = $stocks->sortBy(function ($stock) use ($sortBy) {
             switch ($sortBy) {
-                case 'value': return $stock->valuation_value;
-                case 'quantity': return $stock->quantity;
-                case 'product_name': return $stock->product->name;
-                default: return $stock->valuation_value;
+                case 'value':
+                    return $stock->valuation_value;
+                case 'quantity':
+                    return $stock->quantity;
+                case 'product_name':
+                    return $stock->product->name;
+                default:
+                    return $stock->valuation_value;
             }
         }, SORT_REGULAR, $sortOrder === 'desc');
 
@@ -172,7 +176,7 @@ class InventoryStockPdfReportController extends Controller
         ];
 
         // Category breakdown
-        $categoryBreakdown = $stocks->groupBy('product.category.name')->map(function($group) {
+        $categoryBreakdown = $stocks->groupBy('product.category.name')->map(function ($group) {
             return [
                 'name' => $group->first()->product->category->name ?? 'Uncategorized',
                 'product_count' => $group->count(),
@@ -427,7 +431,7 @@ class InventoryStockPdfReportController extends Controller
 
             $filename = 'inventory_valuation_report_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -489,160 +493,160 @@ class InventoryStockPdfReportController extends Controller
      * Get stock adjustment data with comprehensive filtering
      */
     /**
- * Get stock adjustment data with comprehensive filtering
- */
-private function getStockAdjustmentReportData(Request $request)
-{
-    $user = Auth::user();
+     * Get stock adjustment data with comprehensive filtering
+     */
+    private function getStockAdjustmentReportData(Request $request)
+    {
+        $user = Auth::user();
 
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
 
-    $businessId = $request->business_id ?? $user->business_id;
-    $branchId = $request->branch_id ?? $user->primary_branch_id;
+        $businessId = $request->business_id ?? $user->business_id;
+        $branchId = $request->branch_id ?? $user->primary_branch_id;
 
-    // Build comprehensive query
-    $query = StockAdjustment::with(['product.category', 'branch', 'adjustedBy', 'approvedBy'])
-        ->where('business_id', $businessId)
-        ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        // Build comprehensive query
+        $query = StockAdjustment::with(['product.category', 'branch', 'adjustedBy', 'approvedBy'])
+            ->where('business_id', $businessId)
+            ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
 
-    // Apply filters
-    if ($branchId) {
-        $query->where('branch_id', $branchId);
-    }
-
-    if ($request->product_id) {
-        $query->where('product_id', $request->product_id);
-    }
-
-    if ($request->category_id) {
-        $query->whereHas('product', function($q) use ($request) {
-            $q->where('category_id', $request->category_id);
-        });
-    }
-
-    if ($request->adjustment_type && $request->adjustment_type !== 'both') {
-        if ($request->adjustment_type === 'increase') {
-            $query->where('quantity_adjusted', '>', 0);
-        } elseif ($request->adjustment_type === 'decrease') {
-            $query->where('quantity_adjusted', '<', 0);
+        // Apply filters
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
         }
-    }
 
-    if ($request->reason) {
-        $query->where('reason', $request->reason);
-    }
-
-    if ($request->status) {
-        if ($request->status === 'approved') {
-            $query->whereNotNull('approved_at');
-        } elseif ($request->status === 'pending') {
-            $query->whereNull('approved_at');
+        if ($request->product_id) {
+            $query->where('product_id', $request->product_id);
         }
-    }
 
-    if ($request->user_id) {
-        $query->where('adjusted_by', $request->user_id);
-    }
+        if ($request->category_id) {
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
 
-    if ($request->approved_by) {
-        $query->where('approved_by', $request->approved_by);
-    }
+        if ($request->adjustment_type && $request->adjustment_type !== 'both') {
+            if ($request->adjustment_type === 'increase') {
+                $query->where('quantity_adjusted', '>', 0);
+            } elseif ($request->adjustment_type === 'decrease') {
+                $query->where('quantity_adjusted', '<', 0);
+            }
+        }
 
-    if ($request->search) {
-        $query->where(function($q) use ($request) {
-            $q->whereHas('product', function($pq) use ($request) {
-                $pq->where('name', 'like', "%{$request->search}%")
-                   ->orWhere('sku', 'like', "%{$request->search}%");
-            })->orWhere('notes', 'like', "%{$request->search}%");
-        });
-    }
+        if ($request->reason) {
+            $query->where('reason', $request->reason);
+        }
 
-    if ($request->min_quantity) {
-        $query->where(DB::raw('ABS(quantity_adjusted)'), '>=', $request->min_quantity);
-    }
+        if ($request->status) {
+            if ($request->status === 'approved') {
+                $query->whereNotNull('approved_at');
+            } elseif ($request->status === 'pending') {
+                $query->whereNull('approved_at');
+            }
+        }
 
-    // Sorting
-    $sortBy = $request->sort_by ?? 'date';
-    $sortOrder = $request->sort_order ?? 'desc';
+        if ($request->user_id) {
+            $query->where('adjusted_by', $request->user_id);
+        }
 
-    if ($sortBy === 'product_name') {
-        $query->join('products', 'stock_adjustments.product_id', '=', 'products.id')
-              ->orderBy('products.name', $sortOrder)
-              ->select('stock_adjustments.*');
-    } else {
-        $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
-        $query->orderBy($orderColumn, $sortOrder);
-    }
+        if ($request->approved_by) {
+            $query->where('approved_by', $request->approved_by);
+        }
 
-    $adjustments = $query->get();
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('product', function ($pq) use ($request) {
+                    $pq->where('name', 'like', "%{$request->search}%")
+                        ->orWhere('sku', 'like', "%{$request->search}%");
+                })->orWhere('notes', 'like', "%{$request->search}%");
+            });
+        }
 
-    // Calculate summary metrics
-    $summary = [
-        'total_adjustments' => $adjustments->count(),
-        'approved_count' => $adjustments->whereNotNull('approved_at')->count(),
-        'pending_count' => $adjustments->whereNull('approved_at')->count(),
-        'rejected_count' => 0, // Your model doesn't track rejected
-        'increase_count' => $adjustments->where('quantity_adjusted', '>', 0)->count(),
-        'decrease_count' => $adjustments->where('quantity_adjusted', '<', 0)->count(),
-        'total_increase_qty' => $adjustments->where('quantity_adjusted', '>', 0)->sum('quantity_adjusted'),
-        'total_decrease_qty' => abs($adjustments->where('quantity_adjusted', '<', 0)->sum('quantity_adjusted')),
-        'net_adjustment' => $adjustments->sum('quantity_adjusted'),
-        'total_cost_impact' => $adjustments->sum('cost_impact'),
-        'unique_products' => $adjustments->pluck('product_id')->unique()->count(),
-    ];
+        if ($request->min_quantity) {
+            $query->where(DB::raw('ABS(quantity_adjusted)'), '>=', $request->min_quantity);
+        }
 
-    // Reason breakdown
-    $reasonBreakdown = $adjustments->groupBy('reason')->map(function($group) {
-        return [
-            'reason' => ucfirst(str_replace('_', ' ', $group->first()->reason ?? 'Unknown')),
-            'count' => $group->count(),
-            'total_quantity' => $group->sum('quantity_adjusted'),
-            'increase_count' => $group->where('quantity_adjusted', '>', 0)->count(),
-            'decrease_count' => $group->where('quantity_adjusted', '<', 0)->count(),
+        // Sorting
+        $sortBy = $request->sort_by ?? 'date';
+        $sortOrder = $request->sort_order ?? 'desc';
+
+        if ($sortBy === 'product_name') {
+            $query->join('products', 'stock_adjustments.product_id', '=', 'products.id')
+                ->orderBy('products.name', $sortOrder)
+                ->select('stock_adjustments.*');
+        } else {
+            $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
+            $query->orderBy($orderColumn, $sortOrder);
+        }
+
+        $adjustments = $query->get();
+
+        // Calculate summary metrics
+        $summary = [
+            'total_adjustments' => $adjustments->count(),
+            'approved_count' => $adjustments->whereNotNull('approved_at')->count(),
+            'pending_count' => $adjustments->whereNull('approved_at')->count(),
+            'rejected_count' => 0, // Your model doesn't track rejected
+            'increase_count' => $adjustments->where('quantity_adjusted', '>', 0)->count(),
+            'decrease_count' => $adjustments->where('quantity_adjusted', '<', 0)->count(),
+            'total_increase_qty' => $adjustments->where('quantity_adjusted', '>', 0)->sum('quantity_adjusted'),
+            'total_decrease_qty' => abs($adjustments->where('quantity_adjusted', '<', 0)->sum('quantity_adjusted')),
+            'net_adjustment' => $adjustments->sum('quantity_adjusted'),
+            'total_cost_impact' => $adjustments->sum('cost_impact'),
+            'unique_products' => $adjustments->pluck('product_id')->unique()->count(),
         ];
-    })->values();
 
-    // Status breakdown
-    $statusBreakdown = $adjustments->groupBy(function($item) {
-        return $item->approved_at ? 'approved' : 'pending';
-    })->map(function($group, $key) {
+        // Reason breakdown
+        $reasonBreakdown = $adjustments->groupBy('reason')->map(function ($group) {
+            return [
+                'reason' => ucfirst(str_replace('_', ' ', $group->first()->reason ?? 'Unknown')),
+                'count' => $group->count(),
+                'total_quantity' => $group->sum('quantity_adjusted'),
+                'increase_count' => $group->where('quantity_adjusted', '>', 0)->count(),
+                'decrease_count' => $group->where('quantity_adjusted', '<', 0)->count(),
+            ];
+        })->values();
+
+        // Status breakdown
+        $statusBreakdown = $adjustments->groupBy(function ($item) {
+            return $item->approved_at ? 'approved' : 'pending';
+        })->map(function ($group, $key) {
+            return [
+                'status' => ucfirst($key),
+                'count' => $group->count(),
+                'total_quantity' => abs($group->sum('quantity_adjusted')),
+            ];
+        })->values();
+
+        // Top adjusted products
+        $topAdjustedProducts = $adjustments->groupBy('product_id')->map(function ($group) {
+            return [
+                'product' => $group->first()->product,
+                'adjustment_count' => $group->count(),
+                'total_quantity_change' => $group->sum('quantity_adjusted'),
+                'net_change' => $group->sum('quantity_adjusted'),
+            ];
+        })->sortByDesc('adjustment_count')->take(10)->values();
+
         return [
-            'status' => ucfirst($key),
-            'count' => $group->count(),
-            'total_quantity' => abs($group->sum('quantity_adjusted')),
+            'adjustments' => $adjustments,
+            'summary' => $summary,
+            'reason_breakdown' => $reasonBreakdown,
+            'status_breakdown' => $statusBreakdown,
+            'top_adjusted_products' => $topAdjustedProducts,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'period' => [
+                'start' => $request->start_date,
+                'end' => $request->end_date,
+            ],
+            'business' => $user->business,
+            'branch' => $branchId ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
         ];
-    })->values();
-
-    // Top adjusted products
-    $topAdjustedProducts = $adjustments->groupBy('product_id')->map(function($group) {
-        return [
-            'product' => $group->first()->product,
-            'adjustment_count' => $group->count(),
-            'total_quantity_change' => $group->sum('quantity_adjusted'),
-            'net_change' => $group->sum('quantity_adjusted'),
-        ];
-    })->sortByDesc('adjustment_count')->take(10)->values();
-
-    return [
-        'adjustments' => $adjustments,
-        'summary' => $summary,
-        'reason_breakdown' => $reasonBreakdown,
-        'status_breakdown' => $statusBreakdown,
-        'top_adjusted_products' => $topAdjustedProducts,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'period' => [
-            'start' => $request->start_date,
-            'end' => $request->end_date,
-        ],
-        'business' => $user->business,
-        'branch' => $branchId ? $user->primaryBranch : null,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
+    }
 
     /**
      * Generate Stock Adjustment PDF Report
@@ -867,7 +871,7 @@ private function getStockAdjustmentReportData(Request $request)
 
             $filename = 'stock_adjustment_report_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -925,265 +929,265 @@ private function getStockAdjustmentReportData(Request $request)
             return serverErrorResponse('Failed to generate stock transfer report', $e->getMessage());
         }
     }
-  /**
- * Get stock transfer data with comprehensive filtering
- */
-private function getStockTransferReportData(Request $request)
-{
-    $user = Auth::user();
+    /**
+     * Get stock transfer data with comprehensive filtering
+     */
+    private function getStockTransferReportData(Request $request)
+    {
+        $user = Auth::user();
 
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
 
-    $businessId = $request->business_id ?? $user->business_id;
+        $businessId = $request->business_id ?? $user->business_id;
 
-    // Build comprehensive query
-    $query = StockTransfer::with([
-        'items.product.category',
-        'fromBranch',
-        'toBranch',
-        'initiatedBy',
-        'approvedBy'
-    ])
-    ->where('business_id', $businessId)
-    ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        // Build comprehensive query
+        $query = StockTransfer::with([
+            'items.product.category',
+            'fromBranch',
+            'toBranch',
+            'initiatedBy',
+            'approvedBy'
+        ])
+            ->where('business_id', $businessId)
+            ->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
 
-    // Apply filters
-    if ($request->from_branch_id) {
-        $query->where('from_branch_id', $request->from_branch_id);
-    }
-
-    if ($request->to_branch_id) {
-        $query->where('to_branch_id', $request->to_branch_id);
-    }
-
-    // Transfer type filter (inbound/outbound from user's branch perspective)
-    if ($request->transfer_type && $request->transfer_type !== 'all') {
-        $userBranchId = $user->primary_branch_id;
-        if ($request->transfer_type === 'inbound') {
-            $query->where('to_branch_id', $userBranchId);
-        } elseif ($request->transfer_type === 'outbound') {
-            $query->where('from_branch_id', $userBranchId);
+        // Apply filters
+        if ($request->from_branch_id) {
+            $query->where('from_branch_id', $request->from_branch_id);
         }
-    }
 
-    if ($request->product_id) {
-        $query->whereHas('items', function($q) use ($request) {
-            $q->where('product_id', $request->product_id);
-        });
-    }
+        if ($request->to_branch_id) {
+            $query->where('to_branch_id', $request->to_branch_id);
+        }
 
-    if ($request->category_id) {
-        $query->whereHas('items.product', function($q) use ($request) {
-            $q->where('category_id', $request->category_id);
-        });
-    }
-
-    if ($request->status) {
-        $query->where('status', $request->status);
-    }
-
-    if ($request->user_id) {
-        $query->where('initiated_by', $request->user_id);
-    }
-
-    if ($request->approved_by) {
-        $query->where('approved_by', $request->approved_by);
-    }
-
-    if ($request->search) {
-        $query->where(function($q) use ($request) {
-            $q->whereHas('items.product', function($pq) use ($request) {
-                $pq->where('name', 'like', "%{$request->search}%")
-                   ->orWhere('sku', 'like', "%{$request->search}%");
-            })->orWhere('notes', 'like', "%{$request->search}%")
-              ->orWhere('transfer_number', 'like', "%{$request->search}%");
-        });
-    }
-
-    if ($request->min_quantity) {
-        $query->whereHas('items', function($q) use ($request) {
-            $q->where('quantity', '>=', $request->min_quantity);
-        });
-    }
-
-    // Include cancelled transfers option
-    if (!$request->include_cancelled) {
-        $query->where('status', '!=', 'cancelled');
-    }
-
-    // Sorting
-    $sortBy = $request->sort_by ?? 'date';
-    $sortOrder = $request->sort_order ?? 'desc';
-
-    if ($sortBy === 'product_name') {
-        // Can't easily sort by product name when there are multiple items per transfer
-        $query->orderBy('created_at', $sortOrder);
-    } else {
-        $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
-        $query->orderBy($orderColumn, $sortOrder);
-    }
-
-    $transfers = $query->get();
-
-    // Calculate summary metrics (aggregating from items)
-    $totalQuantityTransferred = 0;
-    $totalQuantityInTransit = 0;
-    $totalTransferValue = 0;
-    $uniqueProducts = collect();
-
-    foreach ($transfers as $transfer) {
-        foreach ($transfer->items as $item) {
-            $uniqueProducts->push($item->product_id);
-            $itemValue = $item->quantity * ($item->unit_cost ?? 0);
-            $totalTransferValue += $itemValue;
-
-            if ($transfer->status === 'completed' || $transfer->status === 'received') {
-                $totalQuantityTransferred += $item->quantity;
-            }
-
-            if (in_array($transfer->status, ['in_transit', 'approved'])) {
-                $totalQuantityInTransit += $item->quantity;
+        // Transfer type filter (inbound/outbound from user's branch perspective)
+        if ($request->transfer_type && $request->transfer_type !== 'all') {
+            $userBranchId = $user->primary_branch_id;
+            if ($request->transfer_type === 'inbound') {
+                $query->where('to_branch_id', $userBranchId);
+            } elseif ($request->transfer_type === 'outbound') {
+                $query->where('from_branch_id', $userBranchId);
             }
         }
-    }
 
-    $summary = [
-        'total_transfers' => $transfers->count(),
-        'pending_count' => $transfers->where('status', 'pending')->count(),
-        'approved_count' => $transfers->where('status', 'approved')->count(),
-        'sent_count' => $transfers->where('status', 'in_transit')->count(),
-        'received_count' => $transfers->whereIn('status', ['completed', 'received'])->count(),
-        'cancelled_count' => $transfers->where('status', 'cancelled')->count(),
-        'total_quantity_transferred' => $totalQuantityTransferred,
-        'total_quantity_in_transit' => $totalQuantityInTransit,
-        'total_transfer_value' => $totalTransferValue,
-        'unique_products' => $uniqueProducts->unique()->count(),
-        'unique_routes' => $transfers->map(function($t) {
-            return $t->from_branch_id . '-' . $t->to_branch_id;
-        })->unique()->count(),
-    ];
-
-    // Status breakdown
-    $statusBreakdown = $transfers->groupBy('status')->map(function($group) {
-        $totalQty = 0;
-        foreach ($group as $transfer) {
-            $totalQty += $transfer->items->sum('quantity');
+        if ($request->product_id) {
+            $query->whereHas('items', function ($q) use ($request) {
+                $q->where('product_id', $request->product_id);
+            });
         }
+
+        if ($request->category_id) {
+            $query->whereHas('items.product', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->user_id) {
+            $query->where('initiated_by', $request->user_id);
+        }
+
+        if ($request->approved_by) {
+            $query->where('approved_by', $request->approved_by);
+        }
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('items.product', function ($pq) use ($request) {
+                    $pq->where('name', 'like', "%{$request->search}%")
+                        ->orWhere('sku', 'like', "%{$request->search}%");
+                })->orWhere('notes', 'like', "%{$request->search}%")
+                    ->orWhere('transfer_number', 'like', "%{$request->search}%");
+            });
+        }
+
+        if ($request->min_quantity) {
+            $query->whereHas('items', function ($q) use ($request) {
+                $q->where('quantity', '>=', $request->min_quantity);
+            });
+        }
+
+        // Include cancelled transfers option
+        if (!$request->include_cancelled) {
+            $query->where('status', '!=', 'cancelled');
+        }
+
+        // Sorting
+        $sortBy = $request->sort_by ?? 'date';
+        $sortOrder = $request->sort_order ?? 'desc';
+
+        if ($sortBy === 'product_name') {
+            // Can't easily sort by product name when there are multiple items per transfer
+            $query->orderBy('created_at', $sortOrder);
+        } else {
+            $orderColumn = $sortBy === 'date' ? 'created_at' : $sortBy;
+            $query->orderBy($orderColumn, $sortOrder);
+        }
+
+        $transfers = $query->get();
+
+        // Calculate summary metrics (aggregating from items)
+        $totalQuantityTransferred = 0;
+        $totalQuantityInTransit = 0;
+        $totalTransferValue = 0;
+        $uniqueProducts = collect();
+
+        foreach ($transfers as $transfer) {
+            foreach ($transfer->items as $item) {
+                $uniqueProducts->push($item->product_id);
+                $itemValue = $item->quantity * ($item->unit_cost ?? 0);
+                $totalTransferValue += $itemValue;
+
+                if ($transfer->status === 'completed' || $transfer->status === 'received') {
+                    $totalQuantityTransferred += $item->quantity;
+                }
+
+                if (in_array($transfer->status, ['in_transit', 'approved'])) {
+                    $totalQuantityInTransit += $item->quantity;
+                }
+            }
+        }
+
+        $summary = [
+            'total_transfers' => $transfers->count(),
+            'pending_count' => $transfers->where('status', 'pending')->count(),
+            'approved_count' => $transfers->where('status', 'approved')->count(),
+            'sent_count' => $transfers->where('status', 'in_transit')->count(),
+            'received_count' => $transfers->whereIn('status', ['completed', 'received'])->count(),
+            'cancelled_count' => $transfers->where('status', 'cancelled')->count(),
+            'total_quantity_transferred' => $totalQuantityTransferred,
+            'total_quantity_in_transit' => $totalQuantityInTransit,
+            'total_transfer_value' => $totalTransferValue,
+            'unique_products' => $uniqueProducts->unique()->count(),
+            'unique_routes' => $transfers->map(function ($t) {
+                return $t->from_branch_id . '-' . $t->to_branch_id;
+            })->unique()->count(),
+        ];
+
+        // Status breakdown
+        $statusBreakdown = $transfers->groupBy('status')->map(function ($group) {
+            $totalQty = 0;
+            foreach ($group as $transfer) {
+                $totalQty += $transfer->items->sum('quantity');
+            }
+
+            return [
+                'status' => ucfirst(str_replace('_', ' ', $group->first()->status)),
+                'count' => $group->count(),
+                'total_quantity' => $totalQty,
+                'percentage' => 0,
+            ];
+        })->values();
+
+        // Calculate percentages
+        $totalCount = $statusBreakdown->sum('count');
+        $statusBreakdown = $statusBreakdown->map(function ($item) use ($totalCount) {
+            $item['percentage'] = $totalCount > 0 ? ($item['count'] / $totalCount * 100) : 0;
+            return $item;
+        });
+
+        // Branch route analysis (most active routes)
+        $routeAnalysis = $transfers->groupBy(function ($transfer) {
+            return $transfer->fromBranch->name . ' → ' . $transfer->toBranch->name;
+        })->map(function ($group) {
+            $totalQty = 0;
+            foreach ($group as $transfer) {
+                $totalQty += $transfer->items->sum('quantity');
+            }
+
+            return [
+                'route' => $group->first()->fromBranch->name . ' → ' . $group->first()->toBranch->name,
+                'transfer_count' => $group->count(),
+                'total_quantity' => $totalQty,
+                'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
+                'in_transit' => $group->whereIn('status', ['in_transit', 'approved'])->count(),
+            ];
+        })->sortByDesc('transfer_count')->take(10)->values();
+
+        // Top transferred products (aggregate across all transfer items)
+        // FIXED: Use regular array instead of collection
+        $productTransfers = [];
+        foreach ($transfers as $transfer) {
+            foreach ($transfer->items as $item) {
+                $key = $item->product_id;
+                if (!isset($productTransfers[$key])) {
+                    $productTransfers[$key] = [
+                        'product' => $item->product,
+                        'transfer_count' => 0,
+                        'total_quantity' => 0,
+                        'completed_transfers' => 0,
+                        'pending_transfers' => 0,
+                    ];
+                }
+
+                $productTransfers[$key]['transfer_count']++;
+                $productTransfers[$key]['total_quantity'] += $item->quantity;
+
+                if (in_array($transfer->status, ['completed', 'received'])) {
+                    $productTransfers[$key]['completed_transfers']++;
+                }
+                if (in_array($transfer->status, ['pending', 'approved', 'in_transit'])) {
+                    $productTransfers[$key]['pending_transfers']++;
+                }
+            }
+        }
+        // Convert to collection and sort
+        $topTransferredProducts = collect($productTransfers)->sortByDesc('transfer_count')->take(10)->values();
+
+        // Branch performance (sending)
+        $sendingBranchPerformance = $transfers->groupBy('from_branch_id')->map(function ($group) {
+            $totalQty = 0;
+            foreach ($group as $transfer) {
+                $totalQty += $transfer->items->sum('quantity');
+            }
+
+            return [
+                'branch_name' => $group->first()->fromBranch->name,
+                'total_sent' => $group->count(),
+                'quantity_sent' => $totalQty,
+                'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
+            ];
+        })->sortByDesc('total_sent')->take(5)->values();
+
+        // Branch performance (receiving)
+        $receivingBranchPerformance = $transfers->groupBy('to_branch_id')->map(function ($group) {
+            $totalQty = 0;
+            foreach ($group as $transfer) {
+                $totalQty += $transfer->items->sum('quantity');
+            }
+
+            return [
+                'branch_name' => $group->first()->toBranch->name,
+                'total_received' => $group->count(),
+                'quantity_received' => $totalQty,
+                'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
+            ];
+        })->sortByDesc('total_received')->take(5)->values();
 
         return [
-            'status' => ucfirst(str_replace('_', ' ', $group->first()->status)),
-            'count' => $group->count(),
-            'total_quantity' => $totalQty,
-            'percentage' => 0,
+            'transfers' => $transfers,
+            'summary' => $summary,
+            'status_breakdown' => $statusBreakdown,
+            'route_analysis' => $routeAnalysis,
+            'top_transferred_products' => $topTransferredProducts,
+            'sending_branch_performance' => $sendingBranchPerformance,
+            'receiving_branch_performance' => $receivingBranchPerformance,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'period' => [
+                'start' => $request->start_date,
+                'end' => $request->end_date,
+            ],
+            'business' => $user->business,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
         ];
-    })->values();
-
-    // Calculate percentages
-    $totalCount = $statusBreakdown->sum('count');
-    $statusBreakdown = $statusBreakdown->map(function($item) use ($totalCount) {
-        $item['percentage'] = $totalCount > 0 ? ($item['count'] / $totalCount * 100) : 0;
-        return $item;
-    });
-
-    // Branch route analysis (most active routes)
-    $routeAnalysis = $transfers->groupBy(function($transfer) {
-        return $transfer->fromBranch->name . ' → ' . $transfer->toBranch->name;
-    })->map(function($group) {
-        $totalQty = 0;
-        foreach ($group as $transfer) {
-            $totalQty += $transfer->items->sum('quantity');
-        }
-
-        return [
-            'route' => $group->first()->fromBranch->name . ' → ' . $group->first()->toBranch->name,
-            'transfer_count' => $group->count(),
-            'total_quantity' => $totalQty,
-            'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
-            'in_transit' => $group->whereIn('status', ['in_transit', 'approved'])->count(),
-        ];
-    })->sortByDesc('transfer_count')->take(10)->values();
-
-    // Top transferred products (aggregate across all transfer items)
-    // FIXED: Use regular array instead of collection
-    $productTransfers = [];
-    foreach ($transfers as $transfer) {
-        foreach ($transfer->items as $item) {
-            $key = $item->product_id;
-            if (!isset($productTransfers[$key])) {
-                $productTransfers[$key] = [
-                    'product' => $item->product,
-                    'transfer_count' => 0,
-                    'total_quantity' => 0,
-                    'completed_transfers' => 0,
-                    'pending_transfers' => 0,
-                ];
-            }
-
-            $productTransfers[$key]['transfer_count']++;
-            $productTransfers[$key]['total_quantity'] += $item->quantity;
-
-            if (in_array($transfer->status, ['completed', 'received'])) {
-                $productTransfers[$key]['completed_transfers']++;
-            }
-            if (in_array($transfer->status, ['pending', 'approved', 'in_transit'])) {
-                $productTransfers[$key]['pending_transfers']++;
-            }
-        }
     }
-    // Convert to collection and sort
-    $topTransferredProducts = collect($productTransfers)->sortByDesc('transfer_count')->take(10)->values();
-
-    // Branch performance (sending)
-    $sendingBranchPerformance = $transfers->groupBy('from_branch_id')->map(function($group) {
-        $totalQty = 0;
-        foreach ($group as $transfer) {
-            $totalQty += $transfer->items->sum('quantity');
-        }
-
-        return [
-            'branch_name' => $group->first()->fromBranch->name,
-            'total_sent' => $group->count(),
-            'quantity_sent' => $totalQty,
-            'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
-        ];
-    })->sortByDesc('total_sent')->take(5)->values();
-
-    // Branch performance (receiving)
-    $receivingBranchPerformance = $transfers->groupBy('to_branch_id')->map(function($group) {
-        $totalQty = 0;
-        foreach ($group as $transfer) {
-            $totalQty += $transfer->items->sum('quantity');
-        }
-
-        return [
-            'branch_name' => $group->first()->toBranch->name,
-            'total_received' => $group->count(),
-            'quantity_received' => $totalQty,
-            'completed' => $group->whereIn('status', ['completed', 'received'])->count(),
-        ];
-    })->sortByDesc('total_received')->take(5)->values();
-
-    return [
-        'transfers' => $transfers,
-        'summary' => $summary,
-        'status_breakdown' => $statusBreakdown,
-        'route_analysis' => $routeAnalysis,
-        'top_transferred_products' => $topTransferredProducts,
-        'sending_branch_performance' => $sendingBranchPerformance,
-        'receiving_branch_performance' => $receivingBranchPerformance,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'period' => [
-            'start' => $request->start_date,
-            'end' => $request->end_date,
-        ],
-        'business' => $user->business,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
 
     /**
      * Generate Stock Transfer PDF Report
@@ -1482,7 +1486,7 @@ private function getStockTransferReportData(Request $request)
 
             $filename = 'stock_transfer_report_' . date('Y-m-d') . '.pdf';
             return response()->stream(
-                fn() => print($pdf->Output('S')),
+                fn() => print ($pdf->Output('S')),
                 200,
                 [
                     'Content-Type' => 'application/pdf',

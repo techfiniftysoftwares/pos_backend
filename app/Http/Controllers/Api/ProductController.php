@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Models\Supplier;
+use App\Models\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +54,8 @@ class ProductController extends Controller
             // Validate sort direction
             $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
-            $query = Product::with(['category', 'unit', 'supplier'])
+            $query = Product::with(['category', 'unit', 'supplier', 'currency'])
+                ->withSum('stocks', 'quantity')
                 ->forBusiness($businessId);
 
             // Search filter
@@ -120,6 +122,7 @@ class ProductController extends Controller
             'track_inventory' => 'sometimes|boolean',
             'allow_negative_stock' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
+            'currency_id' => 'nullable|exists:currencies,id',
         ]);
 
         if ($validator->fails()) {
@@ -176,7 +179,14 @@ class ProductController extends Controller
                 'track_inventory' => $request->input('track_inventory', true),
                 'allow_negative_stock' => $request->input('allow_negative_stock', false),
                 'is_active' => $request->input('is_active', true),
+                'currency_id' => $request->input('currency_id'),
             ];
+
+            // If no currency specified, use business base currency
+            if (!$productData['currency_id']) {
+                $baseCurrency = Currency::where('is_base', true)->first();
+                $productData['currency_id'] = $baseCurrency?->id;
+            }
 
             // Generate SKU if not provided
             if (!$productData['sku']) {
@@ -195,7 +205,7 @@ class ProductController extends Controller
 
             DB::commit();
 
-            $product->load(['category', 'unit', 'supplier']);
+            $product->load(['category', 'unit', 'supplier', 'currency']);
 
             return successResponse(
                 'Product created successfully',
@@ -230,7 +240,7 @@ class ProductController extends Controller
                 return errorResponse('Unauthorized access to this product', 403);
             }
 
-            $product->load(['category', 'unit', 'supplier']);
+            $product->load(['category', 'unit', 'supplier', 'currency']);
 
             $productData = $this->transformProduct($product);
 
@@ -276,6 +286,7 @@ class ProductController extends Controller
             'allow_negative_stock' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
             'remove_image' => 'sometimes|boolean',
+            'currency_id' => 'sometimes|exists:currencies,id',
         ]);
 
         if ($validator->fails()) {
@@ -325,7 +336,8 @@ class ProductController extends Controller
                 'tax_rate',
                 'track_inventory',
                 'allow_negative_stock',
-                'is_active'
+                'is_active',
+                'currency_id'
             ]))->filter(function ($value, $key) {
                 return !is_null($value) || in_array($key, ['supplier_id', 'barcode']);
             })->toArray();
@@ -357,7 +369,7 @@ class ProductController extends Controller
 
             DB::commit();
 
-            $product->load(['category', 'unit', 'supplier']);
+            $product->load(['category', 'unit', 'supplier', 'currency']);
 
             return updatedResponse(
                 $this->transformProduct($product),
@@ -550,6 +562,7 @@ class ProductController extends Controller
             'description' => $product->description,
             'image' => $product->image ? asset('storage/' . $product->image) : null,
             'image_path' => $product->image,
+            'quantity' => (float) ($product->stocks_sum_quantity ?? 0),
             'cost_price' => (float) $product->cost_price,
             'selling_price' => (float) $product->selling_price,
             'minimum_stock_level' => $product->minimum_stock_level,
@@ -570,6 +583,13 @@ class ProductController extends Controller
                 'id' => $product->supplier->id,
                 'name' => $product->supplier->name
             ] : null,
+            'currency' => $product->currency ? [
+                'id' => $product->currency->id,
+                'code' => $product->currency->code,
+                'symbol' => $product->currency->symbol,
+                'name' => $product->currency->name
+            ] : null,
+            'currency_id' => $product->currency_id,
             'created_at' => $product->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $product->updated_at->format('Y-m-d H:i:s'),
         ];

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 // FPDF
-require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
+// require_once(base_path('vendor/setasign/fpdf/fpdf.php'));
 
 class PaymentPdfReportController extends Controller
 {
@@ -110,14 +110,19 @@ class PaymentPdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('payment_date', '>=', $request->start_date)
-              ->whereDate('payment_date', '<=', $request->end_date);
+            ->whereDate('payment_date', '<=', $request->end_date);
 
         // Apply filters
-        if ($request->payment_method_id) $query->where('payment_method_id', $request->payment_method_id);
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->payment_type) $query->where('payment_type', $request->payment_type);
-        if ($request->customer_id) $query->where('customer_id', $request->customer_id);
-        if ($request->cashier_id) $query->where('processed_by', $request->cashier_id);
+        if ($request->payment_method_id)
+            $query->where('payment_method_id', $request->payment_method_id);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->payment_type)
+            $query->where('payment_type', $request->payment_type);
+        if ($request->customer_id)
+            $query->where('customer_id', $request->customer_id);
+        if ($request->cashier_id)
+            $query->where('processed_by', $request->cashier_id);
 
         $query->orderBy('payment_date', 'desc');
         $payments = $query->get();
@@ -162,9 +167,12 @@ class PaymentPdfReportController extends Controller
             $methodBreakdown[$methodId]['total_fees'] += $payment->fee_amount;
             $methodBreakdown[$methodId]['net_amount'] += $payment->net_amount;
 
-            if ($payment->status === 'completed') $methodBreakdown[$methodId]['completed_count']++;
-            if ($payment->status === 'failed') $methodBreakdown[$methodId]['failed_count']++;
-            if ($payment->payment_type === 'refund') $methodBreakdown[$methodId]['refund_count']++;
+            if ($payment->status === 'completed')
+                $methodBreakdown[$methodId]['completed_count']++;
+            if ($payment->status === 'failed')
+                $methodBreakdown[$methodId]['failed_count']++;
+            if ($payment->payment_type === 'refund')
+                $methodBreakdown[$methodId]['refund_count']++;
         }
 
         // Calculate averages
@@ -245,7 +253,7 @@ class PaymentPdfReportController extends Controller
 
         $filename = 'payment_method_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -326,7 +334,7 @@ class PaymentPdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('payment_date', '>=', $request->start_date)
-              ->whereDate('payment_date', '<=', $request->end_date);
+            ->whereDate('payment_date', '<=', $request->end_date);
 
         // Reconciliation status filter
         $reconciledStatus = $request->reconciliation_status ?? 'all';
@@ -337,10 +345,14 @@ class PaymentPdfReportController extends Controller
         }
 
         // Apply other filters
-        if ($request->payment_method_id) $query->where('payment_method_id', $request->payment_method_id);
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->cashier_id) $query->where('processed_by', $request->cashier_id);
-        if ($request->reconciled_by) $query->where('reconciled_by', $request->reconciled_by);
+        if ($request->payment_method_id)
+            $query->where('payment_method_id', $request->payment_method_id);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->cashier_id)
+            $query->where('processed_by', $request->cashier_id);
+        if ($request->reconciled_by)
+            $query->where('reconciled_by', $request->reconciled_by);
 
         $query->orderBy('payment_date', 'desc');
         $payments = $query->get();
@@ -354,11 +366,11 @@ class PaymentPdfReportController extends Controller
         }
 
         $reconciliationsQuery->whereDate('reconciliation_date', '>=', $request->start_date)
-                             ->whereDate('reconciliation_date', '<=', $request->end_date);
+            ->whereDate('reconciliation_date', '<=', $request->end_date);
 
         // Variance filters
         if ($request->min_variance !== null || $request->max_variance !== null) {
-            $reconciliationsQuery->where(function($q) use ($request) {
+            $reconciliationsQuery->where(function ($q) use ($request) {
                 if ($request->min_variance !== null) {
                     $q->whereRaw('(actual_cash - expected_cash) >= ?', [$request->min_variance]);
                 }
@@ -436,7 +448,7 @@ class PaymentPdfReportController extends Controller
         }
 
         // Reconciliation details with variance
-        $varianceDetails = $reconciliations->filter(fn($r) => $r->variance != 0)->map(function($rec) {
+        $varianceDetails = $reconciliations->filter(fn($r) => $r->variance != 0)->map(function ($rec) {
             return [
                 'date' => $rec->reconciliation_date->format('M d, Y'),
                 'shift' => ucfirst(str_replace('_', ' ', $rec->shift_type)),
@@ -512,7 +524,7 @@ class PaymentPdfReportController extends Controller
 
         $filename = 'payment_reconciliation_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -592,14 +604,19 @@ class PaymentPdfReportController extends Controller
 
         // Date filtering
         $query->whereDate('reconciliation_date', '>=', $request->start_date)
-              ->whereDate('reconciliation_date', '<=', $request->end_date);
+            ->whereDate('reconciliation_date', '<=', $request->end_date);
 
         // Apply filters
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->shift_type) $query->where('shift_type', $request->shift_type);
-        if ($request->cashier_id) $query->where('user_id', $request->cashier_id);
-        if ($request->reconciled_by) $query->where('reconciled_by', $request->reconciled_by);
-        if ($request->approved_by) $query->where('approved_by', $request->approved_by);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->shift_type)
+            $query->where('shift_type', $request->shift_type);
+        if ($request->cashier_id)
+            $query->where('user_id', $request->cashier_id);
+        if ($request->reconciled_by)
+            $query->where('reconciled_by', $request->reconciled_by);
+        if ($request->approved_by)
+            $query->where('approved_by', $request->approved_by);
 
         // Variance filters
         if ($request->has_variance !== null) {
@@ -678,7 +695,7 @@ class PaymentPdfReportController extends Controller
         $varianceDetails = $reconciliations->filter(fn($r) => $r->variance != 0)
             ->sortByDesc(fn($r) => abs($r->variance))
             ->take(15)
-            ->map(function($rec) {
+            ->map(function ($rec) {
                 return [
                     'date' => $rec->reconciliation_date->format('M d, Y'),
                     'shift' => ucfirst(str_replace('_', ' ', $rec->shift_type)),
@@ -786,7 +803,7 @@ class PaymentPdfReportController extends Controller
 
         $filename = 'cash_reconciliation_report_' . date('Y-m-d') . '.pdf';
         return response()->stream(
-            fn() => print($pdf->Output('S')),
+            fn() => print ($pdf->Output('S')),
             200,
             [
                 'Content-Type' => 'application/pdf',
@@ -825,8 +842,8 @@ class PaymentPdfReportController extends Controller
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->SetTextColor(0, 0, 0);
         $period = date('F d, Y', strtotime($data['filters']['start_date'])) .
-                  ' - ' .
-                  date('F d, Y', strtotime($data['filters']['end_date']));
+            ' - ' .
+            date('F d, Y', strtotime($data['filters']['end_date']));
         $pdf->Cell(0, 6, $period, 0, 1, 'C');
 
         // Subtitle
@@ -1487,854 +1504,859 @@ class PaymentPdfReportController extends Controller
         $pdf->Cell(0, 4, 'This is a computer-generated document and requires no signature', 0, 1, 'C');
     }
     /**
- * =====================================================
- * REPORT 12: CASH REGISTER SESSION REPORT
- * =====================================================
- * Detailed individual or multiple register sessions
- */
-public function generateCashRegisterSessionReport(Request $request)
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'business_id' => 'nullable|exists:businesses,id',
-            'branch_id' => 'nullable|exists:branches,id',
-            'session_id' => 'nullable|exists:cash_reconciliations,id',
-            'cashier_id' => 'nullable|exists:users,id',
-            'status' => 'nullable|in:pending,completed,approved,disputed',
-            'shift_type' => 'nullable|in:morning,afternoon,evening,full_day',
-            'currency_code' => 'nullable|string|size:3',
+     * =====================================================
+     * REPORT 12: CASH REGISTER SESSION REPORT
+     * =====================================================
+     * Detailed individual or multiple register sessions
+     */
+    public function generateCashRegisterSessionReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'business_id' => 'nullable|exists:businesses,id',
+                'branch_id' => 'nullable|exists:branches,id',
+                'session_id' => 'nullable|exists:cash_reconciliations,id',
+                'cashier_id' => 'nullable|exists:users,id',
+                'status' => 'nullable|in:pending,completed,approved,disputed',
+                'shift_type' => 'nullable|in:morning,afternoon,evening,full_day',
+                'currency_code' => 'nullable|string|size:3',
+            ]);
+
+            if ($validator->fails()) {
+                return validationErrorResponse($validator->errors());
+            }
+
+            $reportData = $this->getCashRegisterSessionReportData($request);
+            return $this->generateCashRegisterSessionPDF($reportData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate cash register session report', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return serverErrorResponse('Failed to generate cash register session report', $e->getMessage());
+        }
+    }
+
+    /**
+     * Get cash register session report data
+     */
+    private function getCashRegisterSessionReportData(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get currency information
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
+
+        $businessId = $request->business_id ?? $user->business_id;
+        $branchId = $request->branch_id ?? $user->primary_branch_id;
+
+        // Build query for sessions
+        $query = CashReconciliation::with([
+            'branch',
+            'user',
+            'reconciledBy',
+            'approvedBy',
+            'cashMovements.processedBy'
         ]);
 
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
+        $query->where('business_id', $businessId);
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
         }
 
-        $reportData = $this->getCashRegisterSessionReportData($request);
-        return $this->generateCashRegisterSessionPDF($reportData);
+        // Specific session or date range
+        if ($request->session_id) {
+            $query->where('id', $request->session_id);
+        } else {
+            $query->whereDate('reconciliation_date', '>=', $request->start_date)
+                ->whereDate('reconciliation_date', '<=', $request->end_date);
+        }
 
-    } catch (\Exception $e) {
-        Log::error('Failed to generate cash register session report', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return serverErrorResponse('Failed to generate cash register session report', $e->getMessage());
-    }
-}
+        // Apply filters
+        if ($request->cashier_id)
+            $query->where('user_id', $request->cashier_id);
+        if ($request->status)
+            $query->where('status', $request->status);
+        if ($request->shift_type)
+            $query->where('shift_type', $request->shift_type);
 
-/**
- * Get cash register session report data
- */
-private function getCashRegisterSessionReportData(Request $request)
-{
-    $user = Auth::user();
+        $query->orderBy('reconciliation_date', 'desc');
+        $sessions = $query->get();
 
-    // Get currency information
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
+        // Get payments for these sessions (cash payments during session times)
+        $paymentsBySession = [];
+        foreach ($sessions as $session) {
+            $sessionStart = $session->created_at;
+            $sessionEnd = $session->updated_at ?? now();
 
-    $businessId = $request->business_id ?? $user->business_id;
-    $branchId = $request->branch_id ?? $user->primary_branch_id;
+            $payments = Payment::with(['paymentMethod', 'customer'])
+                ->where('business_id', $businessId)
+                ->where('branch_id', $session->branch_id)
+                ->where('status', 'completed')
+                ->whereBetween('payment_date', [$sessionStart, $sessionEnd])
+                ->whereHas('paymentMethod', function ($q) {
+                    $q->where('type', 'cash');
+                })
+                ->get();
 
-    // Build query for sessions
-    $query = CashReconciliation::with([
-        'branch',
-        'user',
-        'reconciledBy',
-        'approvedBy',
-        'cashMovements.processedBy'
-    ]);
+            $paymentsBySession[$session->id] = $payments;
+        }
 
-    $query->where('business_id', $businessId);
-    if ($branchId) {
-        $query->where('branch_id', $branchId);
-    }
+        // Calculate summary metrics
+        $summary = [
+            'total_sessions' => $sessions->count(),
+            'total_opening_float' => $sessions->sum('opening_float'),
+            'total_expected_cash' => $sessions->sum('expected_cash'),
+            'total_actual_cash' => $sessions->sum('actual_cash'),
+            'total_variance' => $sessions->sum('variance'),
+            'total_cash_sales' => $sessions->sum('cash_sales'),
+            'total_cash_drops' => $sessions->sum('cash_drops'),
+            'total_expenses' => $sessions->sum('cash_expenses'),
+            'total_refunds' => $sessions->sum('cash_refunds'),
+            'approved_sessions' => $sessions->where('status', 'approved')->count(),
+            'pending_sessions' => $sessions->where('status', 'pending')->count(),
+            'sessions_with_variance' => $sessions->filter(fn($s) => $s->variance != 0)->count(),
+            'average_session_value' => $sessions->count() > 0
+                ? $sessions->sum('expected_cash') / $sessions->count()
+                : 0,
+        ];
 
-    // Specific session or date range
-    if ($request->session_id) {
-        $query->where('id', $request->session_id);
-    } else {
-        $query->whereDate('reconciliation_date', '>=', $request->start_date)
-              ->whereDate('reconciliation_date', '<=', $request->end_date);
-    }
+        // Session details with movements
+        $sessionDetails = $sessions->map(function ($session) use ($paymentsBySession, $currencySymbol) {
+            $movements = $session->cashMovements;
+            $payments = $paymentsBySession[$session->id] ?? collect();
 
-    // Apply filters
-    if ($request->cashier_id) $query->where('user_id', $request->cashier_id);
-    if ($request->status) $query->where('status', $request->status);
-    if ($request->shift_type) $query->where('shift_type', $request->shift_type);
-
-    $query->orderBy('reconciliation_date', 'desc');
-    $sessions = $query->get();
-
-    // Get payments for these sessions (cash payments during session times)
-    $paymentsBySession = [];
-    foreach ($sessions as $session) {
-        $sessionStart = $session->created_at;
-        $sessionEnd = $session->updated_at ?? now();
-
-        $payments = Payment::with(['paymentMethod', 'customer'])
-            ->where('business_id', $businessId)
-            ->where('branch_id', $session->branch_id)
-            ->where('status', 'completed')
-            ->whereBetween('payment_date', [$sessionStart, $sessionEnd])
-            ->whereHas('paymentMethod', function($q) {
-                $q->where('type', 'cash');
-            })
-            ->get();
-
-        $paymentsBySession[$session->id] = $payments;
-    }
-
-    // Calculate summary metrics
-    $summary = [
-        'total_sessions' => $sessions->count(),
-        'total_opening_float' => $sessions->sum('opening_float'),
-        'total_expected_cash' => $sessions->sum('expected_cash'),
-        'total_actual_cash' => $sessions->sum('actual_cash'),
-        'total_variance' => $sessions->sum('variance'),
-        'total_cash_sales' => $sessions->sum('cash_sales'),
-        'total_cash_drops' => $sessions->sum('cash_drops'),
-        'total_expenses' => $sessions->sum('cash_expenses'),
-        'total_refunds' => $sessions->sum('cash_refunds'),
-        'approved_sessions' => $sessions->where('status', 'approved')->count(),
-        'pending_sessions' => $sessions->where('status', 'pending')->count(),
-        'sessions_with_variance' => $sessions->filter(fn($s) => $s->variance != 0)->count(),
-        'average_session_value' => $sessions->count() > 0
-            ? $sessions->sum('expected_cash') / $sessions->count()
-            : 0,
-    ];
-
-    // Session details with movements
-    $sessionDetails = $sessions->map(function($session) use ($paymentsBySession, $currencySymbol) {
-        $movements = $session->cashMovements;
-        $payments = $paymentsBySession[$session->id] ?? collect();
+            return [
+                'session' => $session,
+                'movements' => $movements,
+                'payments' => $payments,
+                'movement_summary' => [
+                    'cash_drops' => $movements->where('movement_type', 'cash_drop')->sum('amount'),
+                    'expenses' => $movements->where('movement_type', 'expense')->sum('amount'),
+                    'cash_in' => $movements->where('movement_type', 'cash_in')->sum('amount'),
+                    'cash_out' => $movements->where('movement_type', 'cash_out')->sum('amount'),
+                ],
+                'payment_summary' => [
+                    'count' => $payments->count(),
+                    'total' => $payments->sum('amount'),
+                ],
+            ];
+        });
 
         return [
-            'session' => $session,
-            'movements' => $movements,
-            'payments' => $payments,
-            'movement_summary' => [
-                'cash_drops' => $movements->where('movement_type', 'cash_drop')->sum('amount'),
-                'expenses' => $movements->where('movement_type', 'expense')->sum('amount'),
-                'cash_in' => $movements->where('movement_type', 'cash_in')->sum('amount'),
-                'cash_out' => $movements->where('movement_type', 'cash_out')->sum('amount'),
+            'sessions' => $sessions,
+            'session_details' => $sessionDetails,
+            'summary' => $summary,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'filters' => [
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'branch_id' => $branchId,
+                'session_id' => $request->session_id,
             ],
-            'payment_summary' => [
-                'count' => $payments->count(),
-                'total' => $payments->sum('amount'),
+            'business' => $user->business,
+            'branch' => $branchId ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * Generate cash register session PDF
+     */
+    private function generateCashRegisterSessionPDF($data)
+    {
+        $pdf = new \FPDF('L', 'mm', 'A4');
+        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->AddPage();
+
+        $primary = $this->colors['matisse'];
+        $accent = $this->colors['sun'];
+
+        // HEADER
+        $this->addProfessionalHeader($pdf, 'CASH REGISTER SESSION REPORT', $data, $primary);
+
+        // SUMMARY METRICS
+        $this->addCashRegisterSessionSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
+
+        // SESSION DETAILS
+        foreach ($data['session_details'] as $sessionDetail) {
+            $this->addSessionDetailCard($pdf, $sessionDetail, $data['currency'], $primary, $accent);
+        }
+
+        // FOOTER
+        $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
+
+        $filename = 'cash_register_session_report_' . date('Y-m-d') . '.pdf';
+        return response()->stream(
+            fn() => print ($pdf->Output('S')),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"'
+            ]
+        );
+    }
+
+    /**
+     * =====================================================
+     * REPORT 13: CASH MOVEMENT SUMMARY REPORT
+     * =====================================================
+     * Comprehensive cash movement tracking and analysis
+     */
+    public function generateCashMovementSummaryReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'business_id' => 'nullable|exists:businesses,id',
+                'branch_id' => 'nullable|exists:branches,id',
+                'movement_type' => 'nullable|in:cash_in,cash_out,cash_drop,opening_float,expense',
+                'processed_by' => 'nullable|exists:users,id',
+                'min_amount' => 'nullable|numeric|min:0',
+                'max_amount' => 'nullable|numeric|min:0',
+                'currency_code' => 'nullable|string|size:3',
+            ]);
+
+            if ($validator->fails()) {
+                return validationErrorResponse($validator->errors());
+            }
+
+            $reportData = $this->getCashMovementSummaryReportData($request);
+            return $this->generateCashMovementSummaryPDF($reportData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate cash movement summary report', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return serverErrorResponse('Failed to generate cash movement summary report', $e->getMessage());
+        }
+    }
+
+    /**
+     * Get cash movement summary report data
+     */
+    private function getCashMovementSummaryReportData(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get currency information
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
+
+        $businessId = $request->business_id ?? $user->business_id;
+        $branchId = $request->branch_id ?? $user->primary_branch_id;
+
+        // Build query for cash movements
+        $query = CashMovement::with([
+            'cashReconciliation.user',
+            'processedBy',
+            'branch'
+        ]);
+
+        $query->where('business_id', $businessId);
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        // Date filtering
+        $query->whereDate('movement_time', '>=', $request->start_date)
+            ->whereDate('movement_time', '<=', $request->end_date);
+
+        // Apply filters
+        if ($request->movement_type)
+            $query->where('movement_type', $request->movement_type);
+        if ($request->processed_by)
+            $query->where('processed_by', $request->processed_by);
+
+        // Amount range filters
+        if ($request->min_amount !== null) {
+            $query->where('amount', '>=', $request->min_amount);
+        }
+        if ($request->max_amount !== null) {
+            $query->where('amount', '<=', $request->max_amount);
+        }
+
+        $query->orderBy('movement_time', 'desc');
+        $movements = $query->get();
+
+        // Calculate summary metrics
+        $summary = [
+            'total_movements' => $movements->count(),
+            'total_cash_in' => $movements->where('movement_type', 'cash_in')->sum('amount'),
+            'total_cash_out' => $movements->where('movement_type', 'cash_out')->sum('amount'),
+            'total_cash_drops' => $movements->where('movement_type', 'cash_drop')->sum('amount'),
+            'total_expenses' => $movements->where('movement_type', 'expense')->sum('amount'),
+            'total_opening_floats' => $movements->where('movement_type', 'opening_float')->sum('amount'),
+            'net_movement' => $movements->where('movement_type', 'cash_in')->sum('amount')
+                - $movements->where('movement_type', 'cash_out')->sum('amount')
+                - $movements->where('movement_type', 'expense')->sum('amount'),
+            'cash_in_count' => $movements->where('movement_type', 'cash_in')->count(),
+            'cash_out_count' => $movements->where('movement_type', 'cash_out')->count(),
+            'cash_drop_count' => $movements->where('movement_type', 'cash_drop')->count(),
+            'expense_count' => $movements->where('movement_type', 'expense')->count(),
+            'average_cash_drop' => $movements->where('movement_type', 'cash_drop')->count() > 0
+                ? $movements->where('movement_type', 'cash_drop')->sum('amount') / $movements->where('movement_type', 'cash_drop')->count()
+                : 0,
+            'average_expense' => $movements->where('movement_type', 'expense')->count() > 0
+                ? $movements->where('movement_type', 'expense')->sum('amount') / $movements->where('movement_type', 'expense')->count()
+                : 0,
+        ];
+
+        // Movement type breakdown
+        $typeBreakdown = [
+            [
+                'type' => 'Cash In',
+                'count' => $summary['cash_in_count'],
+                'amount' => $summary['total_cash_in'],
+                'avg' => $summary['cash_in_count'] > 0 ? $summary['total_cash_in'] / $summary['cash_in_count'] : 0,
+            ],
+            [
+                'type' => 'Cash Out',
+                'count' => $summary['cash_out_count'],
+                'amount' => $summary['total_cash_out'],
+                'avg' => $summary['cash_out_count'] > 0 ? $summary['total_cash_out'] / $summary['cash_out_count'] : 0,
+            ],
+            [
+                'type' => 'Cash Drop',
+                'count' => $summary['cash_drop_count'],
+                'amount' => $summary['total_cash_drops'],
+                'avg' => $summary['average_cash_drop'],
+            ],
+            [
+                'type' => 'Expense',
+                'count' => $summary['expense_count'],
+                'amount' => $summary['total_expenses'],
+                'avg' => $summary['average_expense'],
+            ],
+            [
+                'type' => 'Opening Float',
+                'count' => $movements->where('movement_type', 'opening_float')->count(),
+                'amount' => $summary['total_opening_floats'],
+                'avg' => $movements->where('movement_type', 'opening_float')->count() > 0
+                    ? $summary['total_opening_floats'] / $movements->where('movement_type', 'opening_float')->count()
+                    : 0,
             ],
         ];
-    });
 
-    return [
-        'sessions' => $sessions,
-        'session_details' => $sessionDetails,
-        'summary' => $summary,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'filters' => [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'branch_id' => $branchId,
-            'session_id' => $request->session_id,
-        ],
-        'business' => $user->business,
-        'branch' => $branchId ? $user->primaryBranch : null,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
+        // Daily movement summary
+        $dailySummary = $movements->groupBy(fn($m) => $m->movement_time->format('Y-m-d'))
+            ->map(fn($group) => [
+                'date' => $group->first()->movement_time->format('M d, Y'),
+                'count' => $group->count(),
+                'cash_in' => $group->where('movement_type', 'cash_in')->sum('amount'),
+                'cash_out' => $group->where('movement_type', 'cash_out')->sum('amount'),
+                'cash_drops' => $group->where('movement_type', 'cash_drop')->sum('amount'),
+                'expenses' => $group->where('movement_type', 'expense')->sum('amount'),
+                'net' => $group->where('movement_type', 'cash_in')->sum('amount')
+                    - $group->where('movement_type', 'cash_out')->sum('amount')
+                    - $group->where('movement_type', 'expense')->sum('amount'),
+            ])->values();
 
-/**
- * Generate cash register session PDF
- */
-private function generateCashRegisterSessionPDF($data)
-{
-    $pdf = new \FPDF('L', 'mm', 'A4');
-    $pdf->SetAutoPageBreak(true, 15);
-    $pdf->AddPage();
+        // Staff performance (who processes movements)
+        $staffPerformance = [];
+        foreach ($movements as $movement) {
+            $staffId = $movement->processed_by;
+            $staffName = $movement->processedBy->name ?? 'Unknown';
 
-    $primary = $this->colors['matisse'];
-    $accent = $this->colors['sun'];
+            if (!isset($staffPerformance[$staffId])) {
+                $staffPerformance[$staffId] = [
+                    'name' => $staffName,
+                    'total_movements' => 0,
+                    'cash_drops' => 0,
+                    'expenses' => 0,
+                    'total_amount' => 0,
+                ];
+            }
 
-    // HEADER
-    $this->addProfessionalHeader($pdf, 'CASH REGISTER SESSION REPORT', $data, $primary);
+            $staffPerformance[$staffId]['total_movements']++;
+            $staffPerformance[$staffId]['total_amount'] += $movement->amount;
 
-    // SUMMARY METRICS
-    $this->addCashRegisterSessionSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
-
-    // SESSION DETAILS
-    foreach ($data['session_details'] as $sessionDetail) {
-        $this->addSessionDetailCard($pdf, $sessionDetail, $data['currency'], $primary, $accent);
-    }
-
-    // FOOTER
-    $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
-
-    $filename = 'cash_register_session_report_' . date('Y-m-d') . '.pdf';
-    return response()->stream(
-        fn() => print($pdf->Output('S')),
-        200,
-        [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"'
-        ]
-    );
-}
-
-/**
- * =====================================================
- * REPORT 13: CASH MOVEMENT SUMMARY REPORT
- * =====================================================
- * Comprehensive cash movement tracking and analysis
- */
-public function generateCashMovementSummaryReport(Request $request)
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'business_id' => 'nullable|exists:businesses,id',
-            'branch_id' => 'nullable|exists:branches,id',
-            'movement_type' => 'nullable|in:cash_in,cash_out,cash_drop,opening_float,expense',
-            'processed_by' => 'nullable|exists:users,id',
-            'min_amount' => 'nullable|numeric|min:0',
-            'max_amount' => 'nullable|numeric|min:0',
-            'currency_code' => 'nullable|string|size:3',
-        ]);
-
-        if ($validator->fails()) {
-            return validationErrorResponse($validator->errors());
+            if ($movement->movement_type === 'cash_drop') {
+                $staffPerformance[$staffId]['cash_drops']++;
+            }
+            if ($movement->movement_type === 'expense') {
+                $staffPerformance[$staffId]['expenses']++;
+            }
         }
 
-        $reportData = $this->getCashMovementSummaryReportData($request);
-        return $this->generateCashMovementSummaryPDF($reportData);
+        // Sort by total movements
+        usort($staffPerformance, fn($a, $b) => $b['total_movements'] <=> $a['total_movements']);
 
-    } catch (\Exception $e) {
-        Log::error('Failed to generate cash movement summary report', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return serverErrorResponse('Failed to generate cash movement summary report', $e->getMessage());
+        // Expense breakdown (top expenses)
+        $expenseMovements = $movements->where('movement_type', 'expense')
+            ->sortByDesc('amount')
+            ->take(15)
+            ->map(function ($movement) {
+                return [
+                    'date' => $movement->movement_time->format('M d, Y H:i'),
+                    'reason' => $movement->reason,
+                    'amount' => $movement->amount,
+                    'processed_by' => $movement->processedBy->name ?? 'N/A',
+                    'reference' => $movement->reference_number,
+                ];
+            })->values();
+
+        // Large cash drops (top 10)
+        $largeCashDrops = $movements->where('movement_type', 'cash_drop')
+            ->sortByDesc('amount')
+            ->take(10)
+            ->map(function ($movement) {
+                return [
+                    'date' => $movement->movement_time->format('M d, Y H:i'),
+                    'amount' => $movement->amount,
+                    'processed_by' => $movement->processedBy->name ?? 'N/A',
+                    'session' => $movement->cashReconciliation ?
+                        $movement->cashReconciliation->user->name . ' - ' .
+                        ucfirst(str_replace('_', ' ', $movement->cashReconciliation->shift_type))
+                        : 'N/A',
+                ];
+            })->values();
+
+        return [
+            'movements' => $movements,
+            'summary' => $summary,
+            'type_breakdown' => $typeBreakdown,
+            'daily_summary' => $dailySummary,
+            'staff_performance' => array_slice($staffPerformance, 0, 10),
+            'expense_details' => $expenseMovements,
+            'large_cash_drops' => $largeCashDrops,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'filters' => [
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'branch_id' => $branchId,
+                'movement_type' => $request->movement_type,
+            ],
+            'business' => $user->business,
+            'branch' => $branchId ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
     }
-}
 
-/**
- * Get cash movement summary report data
- */
-private function getCashMovementSummaryReportData(Request $request)
-{
-    $user = Auth::user();
+    /**
+     * Generate cash movement summary PDF
+     */
+    private function generateCashMovementSummaryPDF($data)
+    {
+        $pdf = new \FPDF('L', 'mm', 'A4');
+        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->AddPage();
 
-    // Get currency information
-    $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
-    $currency = Currency::where('code', $currencyCode)->first();
-    $currencySymbol = $currency ? $currency->symbol : '$';
+        $primary = $this->colors['matisse'];
+        $accent = $this->colors['sun'];
 
-    $businessId = $request->business_id ?? $user->business_id;
-    $branchId = $request->branch_id ?? $user->primary_branch_id;
+        // HEADER
+        $this->addProfessionalHeader($pdf, 'CASH MOVEMENT SUMMARY REPORT', $data, $primary);
 
-    // Build query for cash movements
-    $query = CashMovement::with([
-        'cashReconciliation.user',
-        'processedBy',
-        'branch'
-    ]);
+        // SUMMARY METRICS
+        $this->addCashMovementSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
 
-    $query->where('business_id', $businessId);
-    if ($branchId) {
-        $query->where('branch_id', $branchId);
-    }
+        // MOVEMENT TYPE BREAKDOWN
+        $this->addMovementTypeBreakdownTable($pdf, $data['type_breakdown'], $data['currency'], $primary);
 
-    // Date filtering
-    $query->whereDate('movement_time', '>=', $request->start_date)
-          ->whereDate('movement_time', '<=', $request->end_date);
-
-    // Apply filters
-    if ($request->movement_type) $query->where('movement_type', $request->movement_type);
-    if ($request->processed_by) $query->where('processed_by', $request->processed_by);
-
-    // Amount range filters
-    if ($request->min_amount !== null) {
-        $query->where('amount', '>=', $request->min_amount);
-    }
-    if ($request->max_amount !== null) {
-        $query->where('amount', '<=', $request->max_amount);
-    }
-
-    $query->orderBy('movement_time', 'desc');
-    $movements = $query->get();
-
-    // Calculate summary metrics
-    $summary = [
-        'total_movements' => $movements->count(),
-        'total_cash_in' => $movements->where('movement_type', 'cash_in')->sum('amount'),
-        'total_cash_out' => $movements->where('movement_type', 'cash_out')->sum('amount'),
-        'total_cash_drops' => $movements->where('movement_type', 'cash_drop')->sum('amount'),
-        'total_expenses' => $movements->where('movement_type', 'expense')->sum('amount'),
-        'total_opening_floats' => $movements->where('movement_type', 'opening_float')->sum('amount'),
-        'net_movement' => $movements->where('movement_type', 'cash_in')->sum('amount')
-                        - $movements->where('movement_type', 'cash_out')->sum('amount')
-                        - $movements->where('movement_type', 'expense')->sum('amount'),
-        'cash_in_count' => $movements->where('movement_type', 'cash_in')->count(),
-        'cash_out_count' => $movements->where('movement_type', 'cash_out')->count(),
-        'cash_drop_count' => $movements->where('movement_type', 'cash_drop')->count(),
-        'expense_count' => $movements->where('movement_type', 'expense')->count(),
-        'average_cash_drop' => $movements->where('movement_type', 'cash_drop')->count() > 0
-            ? $movements->where('movement_type', 'cash_drop')->sum('amount') / $movements->where('movement_type', 'cash_drop')->count()
-            : 0,
-        'average_expense' => $movements->where('movement_type', 'expense')->count() > 0
-            ? $movements->where('movement_type', 'expense')->sum('amount') / $movements->where('movement_type', 'expense')->count()
-            : 0,
-    ];
-
-    // Movement type breakdown
-    $typeBreakdown = [
-        [
-            'type' => 'Cash In',
-            'count' => $summary['cash_in_count'],
-            'amount' => $summary['total_cash_in'],
-            'avg' => $summary['cash_in_count'] > 0 ? $summary['total_cash_in'] / $summary['cash_in_count'] : 0,
-        ],
-        [
-            'type' => 'Cash Out',
-            'count' => $summary['cash_out_count'],
-            'amount' => $summary['total_cash_out'],
-            'avg' => $summary['cash_out_count'] > 0 ? $summary['total_cash_out'] / $summary['cash_out_count'] : 0,
-        ],
-        [
-            'type' => 'Cash Drop',
-            'count' => $summary['cash_drop_count'],
-            'amount' => $summary['total_cash_drops'],
-            'avg' => $summary['average_cash_drop'],
-        ],
-        [
-            'type' => 'Expense',
-            'count' => $summary['expense_count'],
-            'amount' => $summary['total_expenses'],
-            'avg' => $summary['average_expense'],
-        ],
-        [
-            'type' => 'Opening Float',
-            'count' => $movements->where('movement_type', 'opening_float')->count(),
-            'amount' => $summary['total_opening_floats'],
-            'avg' => $movements->where('movement_type', 'opening_float')->count() > 0
-                ? $summary['total_opening_floats'] / $movements->where('movement_type', 'opening_float')->count()
-                : 0,
-        ],
-    ];
-
-    // Daily movement summary
-    $dailySummary = $movements->groupBy(fn($m) => $m->movement_time->format('Y-m-d'))
-        ->map(fn($group) => [
-            'date' => $group->first()->movement_time->format('M d, Y'),
-            'count' => $group->count(),
-            'cash_in' => $group->where('movement_type', 'cash_in')->sum('amount'),
-            'cash_out' => $group->where('movement_type', 'cash_out')->sum('amount'),
-            'cash_drops' => $group->where('movement_type', 'cash_drop')->sum('amount'),
-            'expenses' => $group->where('movement_type', 'expense')->sum('amount'),
-            'net' => $group->where('movement_type', 'cash_in')->sum('amount')
-                   - $group->where('movement_type', 'cash_out')->sum('amount')
-                   - $group->where('movement_type', 'expense')->sum('amount'),
-        ])->values();
-
-    // Staff performance (who processes movements)
-    $staffPerformance = [];
-    foreach ($movements as $movement) {
-        $staffId = $movement->processed_by;
-        $staffName = $movement->processedBy->name ?? 'Unknown';
-
-        if (!isset($staffPerformance[$staffId])) {
-            $staffPerformance[$staffId] = [
-                'name' => $staffName,
-                'total_movements' => 0,
-                'cash_drops' => 0,
-                'expenses' => 0,
-                'total_amount' => 0,
-            ];
+        // DAILY SUMMARY
+        if (!empty($data['daily_summary']) && count($data['daily_summary']) > 0) {
+            $this->addDailyMovementSummaryTable($pdf, $data['daily_summary'], $data['currency'], $accent);
         }
 
-        $staffPerformance[$staffId]['total_movements']++;
-        $staffPerformance[$staffId]['total_amount'] += $movement->amount;
-
-        if ($movement->movement_type === 'cash_drop') {
-            $staffPerformance[$staffId]['cash_drops']++;
+        // STAFF PERFORMANCE
+        if (!empty($data['staff_performance'])) {
+            $this->addStaffMovementPerformanceTable($pdf, $data['staff_performance'], $data['currency'], $this->colors['hippie_blue']);
         }
-        if ($movement->movement_type === 'expense') {
-            $staffPerformance[$staffId]['expenses']++;
+
+        // EXPENSE DETAILS
+        if (!empty($data['expense_details']) && count($data['expense_details']) > 0) {
+            $this->addExpenseDetailsTable($pdf, $data['expense_details'], $data['currency'], $this->colors['danger']);
         }
+
+        // LARGE CASH DROPS
+        if (!empty($data['large_cash_drops']) && count($data['large_cash_drops']) > 0) {
+            $this->addLargeCashDropsTable($pdf, $data['large_cash_drops'], $data['currency'], $this->colors['warning']);
+        }
+
+        // FOOTER
+        $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
+
+        $filename = 'cash_movement_summary_report_' . date('Y-m-d') . '.pdf';
+        return response()->stream(
+            fn() => print ($pdf->Output('S')),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"'
+            ]
+        );
     }
 
-    // Sort by total movements
-    usort($staffPerformance, fn($a, $b) => $b['total_movements'] <=> $a['total_movements']);
-
-    // Expense breakdown (top expenses)
-    $expenseMovements = $movements->where('movement_type', 'expense')
-        ->sortByDesc('amount')
-        ->take(15)
-        ->map(function($movement) {
-            return [
-                'date' => $movement->movement_time->format('M d, Y H:i'),
-                'reason' => $movement->reason,
-                'amount' => $movement->amount,
-                'processed_by' => $movement->processedBy->name ?? 'N/A',
-                'reference' => $movement->reference_number,
-            ];
-        })->values();
-
-    // Large cash drops (top 10)
-    $largeCashDrops = $movements->where('movement_type', 'cash_drop')
-        ->sortByDesc('amount')
-        ->take(10)
-        ->map(function($movement) {
-            return [
-                'date' => $movement->movement_time->format('M d, Y H:i'),
-                'amount' => $movement->amount,
-                'processed_by' => $movement->processedBy->name ?? 'N/A',
-                'session' => $movement->cashReconciliation ?
-                    $movement->cashReconciliation->user->name . ' - ' .
-                    ucfirst(str_replace('_', ' ', $movement->cashReconciliation->shift_type))
-                    : 'N/A',
-            ];
-        })->values();
-
-    return [
-        'movements' => $movements,
-        'summary' => $summary,
-        'type_breakdown' => $typeBreakdown,
-        'daily_summary' => $dailySummary,
-        'staff_performance' => array_slice($staffPerformance, 0, 10),
-        'expense_details' => $expenseMovements,
-        'large_cash_drops' => $largeCashDrops,
-        'currency' => $currencySymbol,
-        'currency_code' => $currencyCode,
-        'filters' => [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'branch_id' => $branchId,
-            'movement_type' => $request->movement_type,
-        ],
-        'business' => $user->business,
-        'branch' => $branchId ? $user->primaryBranch : null,
-        'generated_by' => $user->name,
-        'generated_at' => now()->format('Y-m-d H:i:s'),
-    ];
-}
-
-/**
- * Generate cash movement summary PDF
- */
-private function generateCashMovementSummaryPDF($data)
-{
-    $pdf = new \FPDF('L', 'mm', 'A4');
-    $pdf->SetAutoPageBreak(true, 15);
-    $pdf->AddPage();
-
-    $primary = $this->colors['matisse'];
-    $accent = $this->colors['sun'];
-
-    // HEADER
-    $this->addProfessionalHeader($pdf, 'CASH MOVEMENT SUMMARY REPORT', $data, $primary);
-
-    // SUMMARY METRICS
-    $this->addCashMovementSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
-
-    // MOVEMENT TYPE BREAKDOWN
-    $this->addMovementTypeBreakdownTable($pdf, $data['type_breakdown'], $data['currency'], $primary);
-
-    // DAILY SUMMARY
-    if (!empty($data['daily_summary']) && count($data['daily_summary']) > 0) {
-        $this->addDailyMovementSummaryTable($pdf, $data['daily_summary'], $data['currency'], $accent);
-    }
-
-    // STAFF PERFORMANCE
-    if (!empty($data['staff_performance'])) {
-        $this->addStaffMovementPerformanceTable($pdf, $data['staff_performance'], $data['currency'], $this->colors['hippie_blue']);
-    }
-
-    // EXPENSE DETAILS
-    if (!empty($data['expense_details']) && count($data['expense_details']) > 0) {
-        $this->addExpenseDetailsTable($pdf, $data['expense_details'], $data['currency'], $this->colors['danger']);
-    }
-
-    // LARGE CASH DROPS
-    if (!empty($data['large_cash_drops']) && count($data['large_cash_drops']) > 0) {
-        $this->addLargeCashDropsTable($pdf, $data['large_cash_drops'], $data['currency'], $this->colors['warning']);
-    }
-
-    // FOOTER
-    $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
-
-    $filename = 'cash_movement_summary_report_' . date('Y-m-d') . '.pdf';
-    return response()->stream(
-        fn() => print($pdf->Output('S')),
-        200,
-        [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"'
-        ]
-    );
-}
-
-// =====================================================
+    // =====================================================
 // PDF COMPONENTS FOR NEW REPORTS
 // =====================================================
 
-/**
- * Cash register session summary boxes
- */
-private function addCashRegisterSessionSummaryBoxes($pdf, $summary, $currency, $primary, $accent)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-    $pdf->Cell(0, 7, 'SESSION SUMMARY', 0, 1);
-    $pdf->Ln(2);
-
-    $boxW = 65;
-    $boxH = 22;
-    $gap = 5;
-    $startX = 15;
-    $y = $pdf->GetY();
-
-    // Row 1
-    $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL SESSIONS', number_format($summary['total_sessions']), $primary);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'OPENING FLOAT', $currency . ' ' . number_format($summary['total_opening_float'], 2), $accent);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXPECTED CASH', $currency . ' ' . number_format($summary['total_expected_cash'], 2), $this->colors['hippie_blue']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'ACTUAL CASH', $currency . ' ' . number_format($summary['total_actual_cash'], 2), $this->colors['success']);
-
-    // Row 2
-    $y += $boxH + $gap;
-    $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH SALES', $currency . ' ' . number_format($summary['total_cash_sales'], 2), $this->colors['success']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CASH DROPS', $currency . ' ' . number_format($summary['total_cash_drops'], 2), $this->colors['warning']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXPENSES', $currency . ' ' . number_format($summary['total_expenses'], 2), $this->colors['danger']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'VARIANCE', $currency . ' ' . number_format($summary['total_variance'], 2), $summary['total_variance'] >= 0 ? $this->colors['success'] : $this->colors['danger']);
-
-    $pdf->SetY($y + $boxH + 8);
-}
-
-/**
- * Session detail card
- */
-private function addSessionDetailCard($pdf, $sessionDetail, $currency, $primary, $accent)
-{
-    $session = $sessionDetail['session'];
-
-    // Check if we need a new page
-    if ($pdf->GetY() > 160) {
-        $pdf->AddPage();
-    }
-
-    $startY = $pdf->GetY();
-
-    // Session header box
-    $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(0, 8, 'SESSION: ' . $session->reconciliation_date->format('M d, Y') . ' - ' . ucfirst(str_replace('_', ' ', $session->shift_type)) . ' - ' . ($session->user->name ?? 'N/A'), 0, 1, 'L', true);
-
-    // Session info grid
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetFillColor(245, 245, 245);
-
-    $colW = 70;
-    $pdf->Cell($colW, 6, 'Opening Float: ' . $currency . ' ' . number_format($session->opening_float, 2), 1, 0, 'L', true);
-    $pdf->Cell($colW, 6, 'Expected: ' . $currency . ' ' . number_format($session->expected_cash, 2), 1, 0, 'L', true);
-    $pdf->Cell($colW, 6, 'Actual: ' . $currency . ' ' . number_format($session->actual_cash, 2), 1, 0, 'L', true);
-
-    // Color variance
-    $variance = $session->variance;
-    if ($variance > 0) {
-        $pdf->SetTextColor($this->colors['success'][0], $this->colors['success'][1], $this->colors['success'][2]);
-    } elseif ($variance < 0) {
-        $pdf->SetTextColor($this->colors['danger'][0], $this->colors['danger'][1], $this->colors['danger'][2]);
-    }
-    $pdf->Cell($colW, 6, 'Variance: ' . $currency . ' ' . number_format($variance, 2), 1, 1, 'L', true);
-    $pdf->SetTextColor(0, 0, 0);
-
-    // Movements if any
-    if ($sessionDetail['movements']->count() > 0) {
+    /**
+     * Cash register session summary boxes
+     */
+    private function addCashRegisterSessionSummaryBoxes($pdf, $summary, $currency, $primary, $accent)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 7, 'SESSION SUMMARY', 0, 1);
         $pdf->Ln(2);
+
+        $boxW = 65;
+        $boxH = 22;
+        $gap = 5;
+        $startX = 15;
+        $y = $pdf->GetY();
+
+        // Row 1
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL SESSIONS', number_format($summary['total_sessions']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'OPENING FLOAT', $currency . ' ' . number_format($summary['total_opening_float'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXPECTED CASH', $currency . ' ' . number_format($summary['total_expected_cash'], 2), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'ACTUAL CASH', $currency . ' ' . number_format($summary['total_actual_cash'], 2), $this->colors['success']);
+
+        // Row 2
+        $y += $boxH + $gap;
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH SALES', $currency . ' ' . number_format($summary['total_cash_sales'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CASH DROPS', $currency . ' ' . number_format($summary['total_cash_drops'], 2), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'EXPENSES', $currency . ' ' . number_format($summary['total_expenses'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'VARIANCE', $currency . ' ' . number_format($summary['total_variance'], 2), $summary['total_variance'] >= 0 ? $this->colors['success'] : $this->colors['danger']);
+
+        $pdf->SetY($y + $boxH + 8);
+    }
+
+    /**
+     * Session detail card
+     */
+    private function addSessionDetailCard($pdf, $sessionDetail, $currency, $primary, $accent)
+    {
+        $session = $sessionDetail['session'];
+
+        // Check if we need a new page
+        if ($pdf->GetY() > 160) {
+            $pdf->AddPage();
+        }
+
+        $startY = $pdf->GetY();
+
+        // Session header box
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->Cell(0, 8, 'SESSION: ' . $session->reconciliation_date->format('M d, Y') . ' - ' . ucfirst(str_replace('_', ' ', $session->shift_type)) . ' - ' . ($session->user->name ?? 'N/A'), 0, 1, 'L', true);
+
+        // Session info grid
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFillColor(245, 245, 245);
+
+        $colW = 70;
+        $pdf->Cell($colW, 6, 'Opening Float: ' . $currency . ' ' . number_format($session->opening_float, 2), 1, 0, 'L', true);
+        $pdf->Cell($colW, 6, 'Expected: ' . $currency . ' ' . number_format($session->expected_cash, 2), 1, 0, 'L', true);
+        $pdf->Cell($colW, 6, 'Actual: ' . $currency . ' ' . number_format($session->actual_cash, 2), 1, 0, 'L', true);
+
+        // Color variance
+        $variance = $session->variance;
+        if ($variance > 0) {
+            $pdf->SetTextColor($this->colors['success'][0], $this->colors['success'][1], $this->colors['success'][2]);
+        } elseif ($variance < 0) {
+            $pdf->SetTextColor($this->colors['danger'][0], $this->colors['danger'][1], $this->colors['danger'][2]);
+        }
+        $pdf->Cell($colW, 6, 'Variance: ' . $currency . ' ' . number_format($variance, 2), 1, 1, 'L', true);
+        $pdf->SetTextColor(0, 0, 0);
+
+        // Movements if any
+        if ($sessionDetail['movements']->count() > 0) {
+            $pdf->Ln(2);
+            $pdf->SetFont('Arial', 'B', 9);
+            $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
+            $pdf->Cell(0, 6, 'Cash Movements (' . $sessionDetail['movements']->count() . ')', 0, 1);
+
+            $pdf->SetFont('Arial', '', 8);
+            $pdf->SetTextColor(0, 0, 0);
+            $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
+            $pdf->SetTextColor(255, 255, 255);
+
+            $pdf->Cell(40, 6, 'Time', 1, 0, 'C', true);
+            $pdf->Cell(40, 6, 'Type', 1, 0, 'C', true);
+            $pdf->Cell(35, 6, 'Amount', 1, 0, 'C', true);
+            $pdf->Cell(90, 6, 'Reason', 1, 0, 'C', true);
+            $pdf->Cell(75, 6, 'Processed By', 1, 1, 'C', true);
+
+            $pdf->SetTextColor(0, 0, 0);
+            $pdf->SetFont('Arial', '', 7);
+
+            foreach ($sessionDetail['movements']->take(5) as $movement) {
+                $pdf->Cell(40, 5, $movement->movement_time->format('H:i'), 1, 0, 'C');
+                $pdf->Cell(40, 5, ucfirst(str_replace('_', ' ', $movement->movement_type)), 1, 0, 'L');
+                $pdf->Cell(35, 5, $currency . ' ' . number_format($movement->amount, 2), 1, 0, 'R');
+                $pdf->Cell(90, 5, substr($movement->reason ?? '-', 0, 40), 1, 0, 'L');
+                $pdf->Cell(75, 5, $movement->processedBy->name ?? 'N/A', 1, 1, 'L');
+            }
+        }
+
+        $pdf->Ln(6);
+    }
+
+    /**
+     * Cash movement summary boxes
+     */
+    private function addCashMovementSummaryBoxes($pdf, $summary, $currency, $primary, $accent)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 7, 'MOVEMENT SUMMARY', 0, 1);
+        $pdf->Ln(2);
+
+        $boxW = 65;
+        $boxH = 22;
+        $gap = 5;
+        $startX = 15;
+        $y = $pdf->GetY();
+
+        // Row 1
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL MOVEMENTS', number_format($summary['total_movements']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CASH IN', $currency . ' ' . number_format($summary['total_cash_in'], 2), $this->colors['success']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'CASH OUT', $currency . ' ' . number_format($summary['total_cash_out'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'NET MOVEMENT', $currency . ' ' . number_format($summary['net_movement'], 2), $accent);
+
+        // Row 2
+        $y += $boxH + $gap;
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH DROPS', $currency . ' ' . number_format($summary['total_cash_drops'], 2), $this->colors['warning']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'EXPENSES', $currency . ' ' . number_format($summary['total_expenses'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'AVG CASH DROP', $currency . ' ' . number_format($summary['average_cash_drop'], 2), $this->colors['hippie_blue']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'AVG EXPENSE', $currency . ' ' . number_format($summary['average_expense'], 2), $this->colors['hippie_blue']);
+
+        $pdf->SetY($y + $boxH + 8);
+    }
+
+    /**
+     * Movement type breakdown table
+     */
+    private function addMovementTypeBreakdownTable($pdf, $breakdown, $currency, $primary)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 7, 'BREAKDOWN BY MOVEMENT TYPE', 0, 1);
+        $pdf->Ln(2);
+
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('Arial', 'B', 9);
+
+        $pdf->Cell(70, 8, 'Movement Type', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Count', 1, 0, 'C', true);
+        $pdf->Cell(75, 8, 'Total Amount', 1, 0, 'C', true);
+        $pdf->Cell(70, 8, 'Average', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        foreach ($breakdown as $type) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+
+            $pdf->Cell(70, 7, $type['type'], 1, 0, 'L', $fill);
+            $pdf->Cell(70, 7, number_format($type['count']), 1, 0, 'C', $fill);
+            $pdf->Cell(75, 7, $currency . ' ' . number_format($type['amount'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(70, 7, $currency . ' ' . number_format($type['avg'], 2), 1, 1, 'R', $fill);
+
+            $fill = !$fill;
+        }
+
+        $pdf->Ln(6);
+    }
+
+    /**
+     * Daily movement summary table
+     */
+    private function addDailyMovementSummaryTable($pdf, $daily, $currency, $accent)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
         $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-        $pdf->Cell(0, 6, 'Cash Movements (' . $sessionDetail['movements']->count() . ')', 0, 1);
+        $pdf->Cell(0, 7, 'DAILY MOVEMENT SUMMARY', 0, 1);
+        $pdf->Ln(2);
+
+        $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 8);
+
+        $pdf->Cell(45, 8, 'Date', 1, 0, 'C', true);
+        $pdf->Cell(30, 8, 'Count', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Cash In', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Cash Out', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Drops', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Expenses', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Net', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 7);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        foreach ($daily as $day) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+
+            $pdf->Cell(45, 7, $day['date'], 1, 0, 'L', $fill);
+            $pdf->Cell(30, 7, number_format($day['count']), 1, 0, 'C', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_in'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_out'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_drops'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($day['expenses'], 2), 1, 0, 'R', $fill);
+
+            // Color code net
+            $net = $day['net'];
+            if ($net > 0) {
+                $pdf->SetTextColor($this->colors['success'][0], $this->colors['success'][1], $this->colors['success'][2]);
+            } elseif ($net < 0) {
+                $pdf->SetTextColor($this->colors['danger'][0], $this->colors['danger'][1], $this->colors['danger'][2]);
+            }
+            $pdf->Cell(50, 7, $currency . ' ' . number_format($net, 2), 1, 1, 'R', $fill);
+            $pdf->SetTextColor(0, 0, 0);
+
+            $fill = !$fill;
+        }
+
+        $pdf->Ln(6);
+    }
+
+    /**
+     * Staff movement performance table
+     */
+    private function addStaffMovementPerformanceTable($pdf, $staff, $currency, $color)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($color[0], $color[1], $color[2]);
+        $pdf->Cell(0, 7, 'STAFF PERFORMANCE (Top 10)', 0, 1);
+        $pdf->Ln(2);
+
+        $pdf->SetFillColor($color[0], $color[1], $color[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $pdf->Cell(80, 8, 'Staff Name', 1, 0, 'C', true);
+        $pdf->Cell(60, 8, 'Total Movements', 1, 0, 'C', true);
+        $pdf->Cell(55, 8, 'Cash Drops', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Expenses', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Amount', 1, 1, 'C', true);
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
+
+        $fill = false;
+        foreach ($staff as $person) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+
+            $pdf->Cell(80, 7, substr($person['name'], 0, 35), 1, 0, 'L', $fill);
+            $pdf->Cell(60, 7, number_format($person['total_movements']), 1, 0, 'C', $fill);
+            $pdf->Cell(55, 7, number_format($person['cash_drops']), 1, 0, 'C', $fill);
+            $pdf->Cell(50, 7, number_format($person['expenses']), 1, 0, 'C', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($person['total_amount'], 2), 1, 1, 'R', $fill);
+
+            $fill = !$fill;
+        }
+
+        $pdf->Ln(6);
+    }
+
+    /**
+     * Expense details table
+     */
+    private function addExpenseDetailsTable($pdf, $expenses, $currency, $color)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($color[0], $color[1], $color[2]);
+        $pdf->Cell(0, 7, 'TOP EXPENSES', 0, 1);
+        $pdf->Ln(2);
+
+        $pdf->SetFillColor($color[0], $color[1], $color[2]);
         $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 8);
 
-        $pdf->Cell(40, 6, 'Time', 1, 0, 'C', true);
-        $pdf->Cell(40, 6, 'Type', 1, 0, 'C', true);
-        $pdf->Cell(35, 6, 'Amount', 1, 0, 'C', true);
-        $pdf->Cell(90, 6, 'Reason', 1, 0, 'C', true);
-        $pdf->Cell(75, 6, 'Processed By', 1, 1, 'C', true);
+        $pdf->Cell(45, 8, 'Date/Time', 1, 0, 'C', true);
+        $pdf->Cell(100, 8, 'Reason', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
+        $pdf->Cell(60, 8, 'Processed By', 1, 0, 'C', true);
+        $pdf->Cell(40, 8, 'Reference', 1, 1, 'C', true);
 
-        $pdf->SetTextColor(0, 0, 0);
         $pdf->SetFont('Arial', '', 7);
-
-        foreach ($sessionDetail['movements']->take(5) as $movement) {
-            $pdf->Cell(40, 5, $movement->movement_time->format('H:i'), 1, 0, 'C');
-            $pdf->Cell(40, 5, ucfirst(str_replace('_', ' ', $movement->movement_type)), 1, 0, 'L');
-            $pdf->Cell(35, 5, $currency . ' ' . number_format($movement->amount, 2), 1, 0, 'R');
-            $pdf->Cell(90, 5, substr($movement->reason ?? '-', 0, 40), 1, 0, 'L');
-            $pdf->Cell(75, 5, $movement->processedBy->name ?? 'N/A', 1, 1, 'L');
-        }
-    }
-
-    $pdf->Ln(6);
-}
-
-/**
- * Cash movement summary boxes
- */
-private function addCashMovementSummaryBoxes($pdf, $summary, $currency, $primary, $accent)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-    $pdf->Cell(0, 7, 'MOVEMENT SUMMARY', 0, 1);
-    $pdf->Ln(2);
-
-    $boxW = 65;
-    $boxH = 22;
-    $gap = 5;
-    $startX = 15;
-    $y = $pdf->GetY();
-
-    // Row 1
-    $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'TOTAL MOVEMENTS', number_format($summary['total_movements']), $primary);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'CASH IN', $currency . ' ' . number_format($summary['total_cash_in'], 2), $this->colors['success']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'CASH OUT', $currency . ' ' . number_format($summary['total_cash_out'], 2), $this->colors['danger']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'NET MOVEMENT', $currency . ' ' . number_format($summary['net_movement'], 2), $accent);
-
-    // Row 2
-    $y += $boxH + $gap;
-    $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, 'CASH DROPS', $currency . ' ' . number_format($summary['total_cash_drops'], 2), $this->colors['warning']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, 'EXPENSES', $currency . ' ' . number_format($summary['total_expenses'], 2), $this->colors['danger']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, 'AVG CASH DROP', $currency . ' ' . number_format($summary['average_cash_drop'], 2), $this->colors['hippie_blue']);
-    $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 3, $y, $boxW, $boxH, 'AVG EXPENSE', $currency . ' ' . number_format($summary['average_expense'], 2), $this->colors['hippie_blue']);
-
-    $pdf->SetY($y + $boxH + 8);
-}
-
-/**
- * Movement type breakdown table
- */
-private function addMovementTypeBreakdownTable($pdf, $breakdown, $currency, $primary)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
-    $pdf->Cell(0, 7, 'BREAKDOWN BY MOVEMENT TYPE', 0, 1);
-    $pdf->Ln(2);
-
-    $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 9);
-
-    $pdf->Cell(70, 8, 'Movement Type', 1, 0, 'C', true);
-    $pdf->Cell(70, 8, 'Count', 1, 0, 'C', true);
-    $pdf->Cell(75, 8, 'Total Amount', 1, 0, 'C', true);
-    $pdf->Cell(70, 8, 'Average', 1, 1, 'C', true);
-
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->SetTextColor(0, 0, 0);
-
-    $fill = false;
-    foreach ($breakdown as $type) {
-        $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-
-        $pdf->Cell(70, 7, $type['type'], 1, 0, 'L', $fill);
-        $pdf->Cell(70, 7, number_format($type['count']), 1, 0, 'C', $fill);
-        $pdf->Cell(75, 7, $currency . ' ' . number_format($type['amount'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(70, 7, $currency . ' ' . number_format($type['avg'], 2), 1, 1, 'R', $fill);
-
-        $fill = !$fill;
-    }
-
-    $pdf->Ln(6);
-}
-
-/**
- * Daily movement summary table
- */
-private function addDailyMovementSummaryTable($pdf, $daily, $currency, $accent)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
-    $pdf->Cell(0, 7, 'DAILY MOVEMENT SUMMARY', 0, 1);
-    $pdf->Ln(2);
-
-    $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 8);
-
-    $pdf->Cell(45, 8, 'Date', 1, 0, 'C', true);
-    $pdf->Cell(30, 8, 'Count', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Cash In', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Cash Out', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Drops', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Expenses', 1, 0, 'C', true);
-    $pdf->Cell(50, 8, 'Net', 1, 1, 'C', true);
-
-    $pdf->SetFont('Arial', '', 7);
-    $pdf->SetTextColor(0, 0, 0);
-
-    $fill = false;
-    foreach ($daily as $day) {
-        $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-
-        $pdf->Cell(45, 7, $day['date'], 1, 0, 'L', $fill);
-        $pdf->Cell(30, 7, number_format($day['count']), 1, 0, 'C', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_in'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_out'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($day['cash_drops'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($day['expenses'], 2), 1, 0, 'R', $fill);
-
-        // Color code net
-        $net = $day['net'];
-        if ($net > 0) {
-            $pdf->SetTextColor($this->colors['success'][0], $this->colors['success'][1], $this->colors['success'][2]);
-        } elseif ($net < 0) {
-            $pdf->SetTextColor($this->colors['danger'][0], $this->colors['danger'][1], $this->colors['danger'][2]);
-        }
-        $pdf->Cell(50, 7, $currency . ' ' . number_format($net, 2), 1, 1, 'R', $fill);
         $pdf->SetTextColor(0, 0, 0);
 
-        $fill = !$fill;
-    }
+        $fill = false;
+        foreach ($expenses as $expense) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
 
-    $pdf->Ln(6);
-}
+            $pdf->Cell(45, 7, substr($expense['date'], 0, 18), 1, 0, 'L', $fill);
+            $pdf->Cell(100, 7, substr($expense['reason'], 0, 45), 1, 0, 'L', $fill);
+            $pdf->Cell(40, 7, $currency . ' ' . number_format($expense['amount'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(60, 7, substr($expense['processed_by'], 0, 25), 1, 0, 'L', $fill);
+            $pdf->Cell(40, 7, substr($expense['reference'] ?? '-', 0, 15), 1, 1, 'L', $fill);
 
-/**
- * Staff movement performance table
- */
-private function addStaffMovementPerformanceTable($pdf, $staff, $currency, $color)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($color[0], $color[1], $color[2]);
-    $pdf->Cell(0, 7, 'STAFF PERFORMANCE (Top 10)', 0, 1);
-    $pdf->Ln(2);
+            $fill = !$fill;
 
-    $pdf->SetFillColor($color[0], $color[1], $color[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 9);
-
-    $pdf->Cell(80, 8, 'Staff Name', 1, 0, 'C', true);
-    $pdf->Cell(60, 8, 'Total Movements', 1, 0, 'C', true);
-    $pdf->Cell(55, 8, 'Cash Drops', 1, 0, 'C', true);
-    $pdf->Cell(50, 8, 'Expenses', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Amount', 1, 1, 'C', true);
-
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->SetTextColor(0, 0, 0);
-
-    $fill = false;
-    foreach ($staff as $person) {
-        $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-
-        $pdf->Cell(80, 7, substr($person['name'], 0, 35), 1, 0, 'L', $fill);
-        $pdf->Cell(60, 7, number_format($person['total_movements']), 1, 0, 'C', $fill);
-        $pdf->Cell(55, 7, number_format($person['cash_drops']), 1, 0, 'C', $fill);
-        $pdf->Cell(50, 7, number_format($person['expenses']), 1, 0, 'C', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($person['total_amount'], 2), 1, 1, 'R', $fill);
-
-        $fill = !$fill;
-    }
-
-    $pdf->Ln(6);
-}
-
-/**
- * Expense details table
- */
-private function addExpenseDetailsTable($pdf, $expenses, $currency, $color)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($color[0], $color[1], $color[2]);
-    $pdf->Cell(0, 7, 'TOP EXPENSES', 0, 1);
-    $pdf->Ln(2);
-
-    $pdf->SetFillColor($color[0], $color[1], $color[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 8);
-
-    $pdf->Cell(45, 8, 'Date/Time', 1, 0, 'C', true);
-    $pdf->Cell(100, 8, 'Reason', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
-    $pdf->Cell(60, 8, 'Processed By', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Reference', 1, 1, 'C', true);
-
-    $pdf->SetFont('Arial', '', 7);
-    $pdf->SetTextColor(0, 0, 0);
-
-    $fill = false;
-    foreach ($expenses as $expense) {
-        $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
-
-        $pdf->Cell(45, 7, substr($expense['date'], 0, 18), 1, 0, 'L', $fill);
-        $pdf->Cell(100, 7, substr($expense['reason'], 0, 45), 1, 0, 'L', $fill);
-        $pdf->Cell(40, 7, $currency . ' ' . number_format($expense['amount'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(60, 7, substr($expense['processed_by'], 0, 25), 1, 0, 'L', $fill);
-        $pdf->Cell(40, 7, substr($expense['reference'] ?? '-', 0, 15), 1, 1, 'L', $fill);
-
-        $fill = !$fill;
-
-        if ($pdf->GetY() > 180) {
-            $pdf->AddPage();
-            // Repeat header
-            $pdf->SetFillColor($color[0], $color[1], $color[2]);
-            $pdf->SetTextColor(255, 255, 255);
-            $pdf->SetFont('Arial', 'B', 8);
-            $pdf->Cell(45, 8, 'Date/Time', 1, 0, 'C', true);
-            $pdf->Cell(100, 8, 'Reason', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
-            $pdf->Cell(60, 8, 'Processed By', 1, 0, 'C', true);
-            $pdf->Cell(40, 8, 'Reference', 1, 1, 'C', true);
-            $pdf->SetFont('Arial', '', 7);
-            $pdf->SetTextColor(0, 0, 0);
+            if ($pdf->GetY() > 180) {
+                $pdf->AddPage();
+                // Repeat header
+                $pdf->SetFillColor($color[0], $color[1], $color[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 8);
+                $pdf->Cell(45, 8, 'Date/Time', 1, 0, 'C', true);
+                $pdf->Cell(100, 8, 'Reason', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Amount', 1, 0, 'C', true);
+                $pdf->Cell(60, 8, 'Processed By', 1, 0, 'C', true);
+                $pdf->Cell(40, 8, 'Reference', 1, 1, 'C', true);
+                $pdf->SetFont('Arial', '', 7);
+                $pdf->SetTextColor(0, 0, 0);
+            }
         }
+
+        $pdf->Ln(6);
     }
 
-    $pdf->Ln(6);
-}
+    /**
+     * Large cash drops table
+     */
+    private function addLargeCashDropsTable($pdf, $drops, $currency, $color)
+    {
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetTextColor($color[0], $color[1], $color[2]);
+        $pdf->Cell(0, 7, 'LARGEST CASH DROPS', 0, 1);
+        $pdf->Ln(2);
 
-/**
- * Large cash drops table
- */
-private function addLargeCashDropsTable($pdf, $drops, $currency, $color)
-{
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor($color[0], $color[1], $color[2]);
-    $pdf->Cell(0, 7, 'LARGEST CASH DROPS', 0, 1);
-    $pdf->Ln(2);
+        $pdf->SetFillColor($color[0], $color[1], $color[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 9);
 
-    $pdf->SetFillColor($color[0], $color[1], $color[2]);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('Arial', 'B', 9);
+        $pdf->Cell(55, 8, 'Date/Time', 1, 0, 'C', true);
+        $pdf->Cell(50, 8, 'Amount', 1, 0, 'C', true);
+        $pdf->Cell(75, 8, 'Processed By', 1, 0, 'C', true);
+        $pdf->Cell(105, 8, 'Session', 1, 1, 'C', true);
 
-    $pdf->Cell(55, 8, 'Date/Time', 1, 0, 'C', true);
-    $pdf->Cell(50, 8, 'Amount', 1, 0, 'C', true);
-    $pdf->Cell(75, 8, 'Processed By', 1, 0, 'C', true);
-    $pdf->Cell(105, 8, 'Session', 1, 1, 'C', true);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->SetTextColor(0, 0, 0);
 
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->SetTextColor(0, 0, 0);
+        $fill = false;
+        foreach ($drops as $drop) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
 
-    $fill = false;
-    foreach ($drops as $drop) {
-        $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+            $pdf->Cell(55, 7, $drop['date'], 1, 0, 'L', $fill);
+            $pdf->Cell(50, 7, $currency . ' ' . number_format($drop['amount'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell(75, 7, substr($drop['processed_by'], 0, 30), 1, 0, 'L', $fill);
+            $pdf->Cell(105, 7, substr($drop['session'], 0, 45), 1, 1, 'L', $fill);
 
-        $pdf->Cell(55, 7, $drop['date'], 1, 0, 'L', $fill);
-        $pdf->Cell(50, 7, $currency . ' ' . number_format($drop['amount'], 2), 1, 0, 'R', $fill);
-        $pdf->Cell(75, 7, substr($drop['processed_by'], 0, 30), 1, 0, 'L', $fill);
-        $pdf->Cell(105, 7, substr($drop['session'], 0, 45), 1, 1, 'L', $fill);
+            $fill = !$fill;
+        }
 
-        $fill = !$fill;
+        $pdf->Ln(6);
     }
-
-    $pdf->Ln(6);
-}
 }

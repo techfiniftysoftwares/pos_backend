@@ -59,7 +59,7 @@ class PurchaseController extends Controller
             $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
             $query = Purchase::query()
-                ->with(['supplier', 'branch', 'createdBy', 'items.product']);
+                ->with(['supplier', 'branch', 'createdBy', 'items.product', 'currencyModel']);
 
             if ($businessId) {
                 $query->where('business_id', $businessId);
@@ -87,7 +87,10 @@ class PurchaseController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('purchase_number', 'like', "%{$search}%")
-                        ->orWhere('invoice_number', 'like', "%{$search}%");
+                        ->orWhere('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
                 });
             }
 
@@ -123,6 +126,7 @@ class PurchaseController extends Controller
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.tax_rate' => 'nullable|numeric|min:0|max:100',
             'currency' => 'nullable|string|size:3',
+            'currency_id' => 'nullable|exists:currencies,id', // Added validation
             'exchange_rate' => 'nullable|numeric|min:0',
             'status' => 'sometimes|in:draft,ordered',
             'invoice_number' => 'nullable|string',
@@ -164,7 +168,22 @@ class PurchaseController extends Controller
             }
 
             $grandTotal = $subtotal + $totalTax;
-            $currency = $request->currency ?? 'USD';
+            $grandTotal = $subtotal + $totalTax;
+
+            // Resolve Currency ID and Code
+            $currencyCode = $request->currency ?? 'USD';
+            $currencyId = $request->currency_id;
+
+            if ($currencyId && (!$request->has('currency') || !$request->currency)) {
+                $currencyModel = \App\Models\Currency::find($currencyId);
+                if ($currencyModel)
+                    $currencyCode = $currencyModel->code;
+            } elseif ($currencyCode && !$currencyId) {
+                $currencyModel = \App\Models\Currency::where('code', $currencyCode)->first();
+                if ($currencyModel)
+                    $currencyId = $currencyModel->id;
+            }
+
             $exchangeRate = $request->exchange_rate ?? 1.0;
 
             // Create Purchase
@@ -178,7 +197,8 @@ class PurchaseController extends Controller
                 'subtotal' => $subtotal,
                 'tax_amount' => $totalTax,
                 'total_amount' => $grandTotal,
-                'currency' => $currency,
+                'currency' => $currencyCode,
+                'currency_id' => $currencyId,
                 'exchange_rate' => $exchangeRate,
                 'status' => $request->status ?? 'draft',
                 'invoice_number' => $request->invoice_number,
@@ -210,7 +230,7 @@ class PurchaseController extends Controller
 
             DB::commit();
 
-            $purchase->load(['supplier', 'branch', 'items.product', 'createdBy']);
+            $purchase->load(['supplier', 'branch', 'items.product', 'createdBy', 'currencyModel']);
 
             return successResponse('Purchase order created successfully', $purchase, 201);
         } catch (\Exception $e) {
@@ -234,7 +254,8 @@ class PurchaseController extends Controller
                 'branch',
                 'items.product',
                 'createdBy',
-                'receivedBy'
+                'receivedBy',
+                'currencyModel'
             ]);
 
             return successResponse('Purchase retrieved successfully', $purchase);
@@ -268,6 +289,9 @@ class PurchaseController extends Controller
             'status' => 'sometimes|in:draft,ordered',
             'invoice_number' => 'nullable|string',
             'notes' => 'nullable|string',
+            'currency' => 'sometimes|string|size:3',
+            'currency_id' => 'sometimes|exists:currencies,id',
+            'exchange_rate' => 'sometimes|numeric|min:0.0001',
         ]);
 
         if ($validator->fails()) {
@@ -283,8 +307,32 @@ class PurchaseController extends Controller
                 'expected_delivery_date',
                 'status',
                 'invoice_number',
-                'notes'
+                'notes',
+                'exchange_rate'
             ]));
+
+            // Handle Currency Update
+            $currencyId = $request->currency_id;
+            $currencyCode = $request->currency;
+
+            if ($currencyId && (!$currencyCode)) {
+                $currencyModel = \App\Models\Currency::find($currencyId);
+                if ($currencyModel)
+                    $currencyCode = $currencyModel->code;
+            } elseif ($currencyCode && !$currencyId) {
+                $currencyModel = \App\Models\Currency::where('code', $currencyCode)->first();
+                if ($currencyModel)
+                    $currencyId = $currencyModel->id;
+            }
+
+            if ($currencyId || $currencyCode) {
+                $updates = [];
+                if ($currencyId)
+                    $updates['currency_id'] = $currencyId;
+                if ($currencyCode)
+                    $updates['currency'] = $currencyCode;
+                $purchase->update($updates);
+            }
 
             if ($request->has('items')) {
                 // Delete old items
@@ -378,6 +426,11 @@ class PurchaseController extends Controller
                 $quantityReceived = $itemData['quantity_received'];
                 $newTotalReceived = $purchaseItem->quantity_received + $quantityReceived;
 
+                // Calculate Unit Cost in Base Currency
+                // Purchase items are stored in purchase currency. Stock must be valued in Base Currency.
+                $exchangeRate = $purchase->exchange_rate ?? 1.0;
+                $unitCostBase = $purchaseItem->unit_cost * $exchangeRate;
+
                 // Validate not receiving more than ordered
                 if ($newTotalReceived > $purchaseItem->quantity_ordered) {
                     $product = Product::find($purchaseItem->product_id);
@@ -404,7 +457,7 @@ class PurchaseController extends Controller
                     [
                         'quantity' => 0,
                         'reserved_quantity' => 0,
-                        'unit_cost' => $purchaseItem->unit_cost,
+                        'unit_cost' => $unitCostBase,
                     ]
                 );
 
@@ -421,14 +474,21 @@ class PurchaseController extends Controller
                     'purchase_reference' => $purchase->purchase_number,
                     'quantity_received' => $quantityReceived,
                     'quantity_remaining' => $quantityReceived,
-                    'unit_cost' => $purchaseItem->unit_cost,
+                    'unit_cost' => $unitCostBase,
                     'received_date' => $receivedDate,
                     'notes' => $request->notes,
                 ]);
 
-                // Update total stock quantity
+                // Calculate Weighted Average Cost
+                $currentValuation = $previousQuantity * $stock->unit_cost;
+                $receivedValuation = $quantityReceived * $unitCostBase;
+                $newValuation = $currentValuation + $receivedValuation;
+                $newAverageCost = ($newQuantity > 0) ? ($newValuation / $newQuantity) : $stock->unit_cost;
+
+                // Update total stock quantity and unit cost
                 $stock->update([
                     'quantity' => $newQuantity,
+                    'unit_cost' => $newAverageCost,
                 ]);
 
                 // Create Stock Movement
@@ -441,15 +501,13 @@ class PurchaseController extends Controller
                     'quantity' => $quantityReceived,
                     'previous_quantity' => $previousQuantity,
                     'new_quantity' => $newQuantity,
-                    'unit_cost' => $purchaseItem->unit_cost,
+                    'unit_cost' => $unitCostBase,
                     'reference_type' => 'App\Models\Purchase',
                     'reference_id' => $purchase->id,
                     'notes' => "Purchase received: {$purchase->purchase_number}. Batch: {$stockBatch->batch_number}",
                 ]);
 
-                // Update product cost_price with latest purchase cost
-                $product = Product::find($purchaseItem->product_id);
-                $product->update(['cost_price' => $purchaseItem->unit_cost]);
+
             }
 
             // Update purchase status
