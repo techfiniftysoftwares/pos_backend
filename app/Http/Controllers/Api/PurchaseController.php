@@ -131,6 +131,7 @@ class PurchaseController extends Controller
             'status' => 'sometimes|in:draft,ordered',
             'invoice_number' => 'nullable|string',
             'notes' => 'nullable|string',
+            'tax_inclusive' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -142,29 +143,46 @@ class PurchaseController extends Controller
 
             // Generate unique purchase number
             $dateStr = date('Ymd', strtotime($request->purchase_date));
-            $count = Purchase::where('business_id', $request->business_id)
+            $count = Purchase::withTrashed()
+                ->where('business_id', $request->business_id)
                 ->whereDate('purchase_date', $request->purchase_date)
                 ->count();
 
             do {
                 $count++;
                 $purchaseNumber = 'PO-' . $dateStr . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
-            } while (Purchase::where('purchase_number', $purchaseNumber)->exists());
+            } while (Purchase::withTrashed()->where('purchase_number', $purchaseNumber)->exists());
 
             // Calculate totals
             $subtotal = 0;
             $totalTax = 0;
+
+            $isTaxInclusive = $request->tax_inclusive ?? false;
 
             foreach ($request->items as $item) {
                 $quantity = $item['quantity'];
                 $unitCost = $item['unit_cost'];
                 $taxRate = $item['tax_rate'] ?? 0;
 
-                $lineSubtotal = $unitCost * $quantity;
-                $lineTax = ($lineSubtotal * $taxRate) / 100;
+                if ($isTaxInclusive) {
+                    // Inclusive: Tax on Gross
+                    // Total = Unit Cost * Quantity
+                    // Tax = Total * (Rate / 100)
+                    // Subtotal = Total - Tax
+                    $lineTotal = $unitCost * $quantity;
+                    $lineTax = ($lineTotal * $taxRate) / 100;
+                    $lineSubtotal = $lineTotal - $lineTax;
 
-                $subtotal += $lineSubtotal;
-                $totalTax += $lineTax;
+                    $subtotal += $lineSubtotal;
+                    $totalTax += $lineTax;
+                } else {
+                    // Exclusive: Standard
+                    $lineSubtotal = $unitCost * $quantity;
+                    $lineTax = ($lineSubtotal * $taxRate) / 100;
+
+                    $subtotal += $lineSubtotal;
+                    $totalTax += $lineTax;
+                }
             }
 
             $grandTotal = $subtotal + $totalTax;
@@ -203,8 +221,11 @@ class PurchaseController extends Controller
                 'status' => $request->status ?? 'draft',
                 'invoice_number' => $request->invoice_number,
                 'notes' => $request->notes,
+                'tax_inclusive' => $request->tax_inclusive ?? false,
                 'created_by' => Auth::id(),
             ]);
+
+            $isTaxInclusive = $request->tax_inclusive ?? false;
 
             // Create Purchase Items
             foreach ($request->items as $item) {
@@ -212,9 +233,19 @@ class PurchaseController extends Controller
                 $unitCost = $item['unit_cost'];
                 $taxRate = $item['tax_rate'] ?? 0;
 
-                $lineSubtotal = $unitCost * $quantity;
-                $lineTax = ($lineSubtotal * $taxRate) / 100;
-                $lineTotal = $lineSubtotal + $lineTax;
+                if ($isTaxInclusive) {
+                    $lineTotal = $unitCost * $quantity;
+                    $lineTax = ($lineTotal * $taxRate) / 100;
+                    // For inclusive, unit_cost is the inclusive cost. 
+                    // Should we store base unit cost or inclusive unit cost?
+                    // Usually systems store the entered unit cost. 
+                    // But calculations need to be consistent. 
+                    // Let's stick to the logic: line_total is accurate.
+                } else {
+                    $lineSubtotal = $unitCost * $quantity;
+                    $lineTax = ($lineSubtotal * $taxRate) / 100;
+                    $lineTotal = $lineSubtotal + $lineTax;
+                }
 
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
@@ -292,6 +323,7 @@ class PurchaseController extends Controller
             'currency' => 'sometimes|string|size:3',
             'currency_id' => 'sometimes|exists:currencies,id',
             'exchange_rate' => 'sometimes|numeric|min:0.0001',
+            'tax_inclusive' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -308,7 +340,8 @@ class PurchaseController extends Controller
                 'status',
                 'invoice_number',
                 'notes',
-                'exchange_rate'
+                'exchange_rate',
+                'tax_inclusive'
             ]));
 
             // Handle Currency Update
@@ -341,18 +374,28 @@ class PurchaseController extends Controller
                 // Recalculate totals
                 $subtotal = 0;
                 $totalTax = 0;
+                $isTaxInclusive = $request->has('tax_inclusive') ? $request->tax_inclusive : ($purchase->tax_inclusive ?? false);
 
                 foreach ($request->items as $item) {
                     $quantity = $item['quantity'];
                     $unitCost = $item['unit_cost'];
                     $taxRate = $item['tax_rate'] ?? 0;
 
-                    $lineSubtotal = $unitCost * $quantity;
-                    $lineTax = ($lineSubtotal * $taxRate) / 100;
-                    $lineTotal = $lineSubtotal + $lineTax;
+                    if ($isTaxInclusive) {
+                        $lineTotal = $unitCost * $quantity;
+                        $lineTax = ($lineTotal * $taxRate) / 100;
+                        $lineSubtotal = $lineTotal - $lineTax;
 
-                    $subtotal += $lineSubtotal;
-                    $totalTax += $lineTax;
+                        $subtotal += $lineSubtotal;
+                        $totalTax += $lineTax;
+                    } else {
+                        $lineSubtotal = $unitCost * $quantity;
+                        $lineTax = ($lineSubtotal * $taxRate) / 100;
+                        $lineTotal = $lineSubtotal + $lineTax;
+
+                        $subtotal += $lineSubtotal;
+                        $totalTax += $lineTax;
+                    }
 
                     PurchaseItem::create([
                         'purchase_id' => $purchase->id,

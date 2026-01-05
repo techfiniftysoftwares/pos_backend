@@ -21,6 +21,7 @@ class Purchase extends Model
         'subtotal',
         'tax_amount',
         'total_amount',
+        'tax_inclusive',
         'currency',
         'currency_id', // Added currency_id
         'exchange_rate',
@@ -40,6 +41,7 @@ class Purchase extends Model
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'tax_inclusive' => 'boolean',
         'exchange_rate' => 'decimal:4',
         'metadata' => 'array',
     ];
