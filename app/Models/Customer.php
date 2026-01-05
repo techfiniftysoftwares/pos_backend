@@ -40,6 +40,11 @@ class Customer extends Model
         'is_active' => true,
     ];
 
+    protected $appends = [
+        'utilized_credit',
+        'available_credit',
+    ];
+
     // Relationships
     public function business()
     {
@@ -113,5 +118,17 @@ class Customer extends Model
         $count = self::where('business_id', $businessId)->withTrashed()->count();
 
         return 'CUST-' . $prefix . '-' . str_pad($count + 1, 6, '0', STR_PAD_LEFT);
+    }
+    public function getUtilizedCreditAttribute()
+    {
+        // Debt is negative (Credit Sale -> Payment type -> reduces balance)
+        // So Utilized is the absolute value of negative balance
+        return max(0, -1 * (float) $this->current_credit_balance);
+    }
+
+    public function getAvailableCreditAttribute()
+    {
+        // Available = Limit + Balance (since Balance is negative for debt)
+        return (float) $this->credit_limit + (float) $this->current_credit_balance;
     }
 }

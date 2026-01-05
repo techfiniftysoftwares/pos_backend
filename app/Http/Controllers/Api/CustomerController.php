@@ -36,6 +36,7 @@ class CustomerController extends Controller
                 'customer_type',
                 'credit_limit',
                 'current_credit_balance',
+                'utilized_credit', // Mapped to current_credit_balance
                 'is_active',
                 'created_at',
                 'updated_at',
@@ -44,6 +45,15 @@ class CustomerController extends Controller
             // Validate sort column
             if (!in_array($sortBy, $allowedSortColumns)) {
                 $sortBy = 'created_at';
+            }
+
+            // Handle virtual sort columns
+            if ($sortBy === 'utilized_credit') {
+                $sortBy = 'current_credit_balance';
+                // Utilized Credit is high when Balance is low (negative).
+                // So Sort Utilized ASC (0 -> High) == Balance DESC (High/Pos -> Low/Neg)
+                // Sort Utilized DESC (High -> 0) == Balance ASC (Low/Neg -> High/Pos)
+                $sortDirection = strtolower($sortDirection) === 'asc' ? 'desc' : 'asc';
             }
 
             // Validate sort direction
@@ -163,7 +173,8 @@ class CustomerController extends Controller
                 'customer_type' => $customer->customer_type,
                 'credit_limit' => $customer->credit_limit,
                 'current_credit_balance' => $customer->current_credit_balance,
-                'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
+                'utilized_credit' => $customer->utilized_credit,
+                'available_credit' => $customer->available_credit,
                 'is_active' => $customer->is_active,
                 'notes' => $customer->notes,
                 'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
@@ -361,7 +372,8 @@ class CustomerController extends Controller
             'customer_type' => $customer->customer_type,
             'credit_limit' => $customer->credit_limit,
             'current_credit_balance' => $customer->current_credit_balance,
-            'available_credit' => $customer->credit_limit - $customer->current_credit_balance,
+            'utilized_credit' => $customer->utilized_credit,
+            'available_credit' => $customer->available_credit,
             'is_active' => $customer->is_active,
             'created_at' => $customer->created_at->format('Y-m-d H:i:s'),
             'business' => $customer->business ? $customer->business->only(['id', 'name']) : null,
