@@ -624,7 +624,7 @@ class SaleController extends Controller
                 'branch',
                 'customer',
                 'cashier',
-                'items.product',
+                'items.product.currency',
                 'salePayments.payment.paymentMethod',
                 'salePayments.payment.currency',
                 'salePayments.currency',
