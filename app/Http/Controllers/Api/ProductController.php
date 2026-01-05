@@ -240,7 +240,8 @@ class ProductController extends Controller
                 return errorResponse('Unauthorized access to this product', 403);
             }
 
-            $product->load(['category', 'unit', 'supplier', 'currency']);
+            $product->load(['category', 'unit', 'supplier', 'currency'])
+                ->loadSum('stocks', 'quantity');
 
             $productData = $this->transformProduct($product);
 
