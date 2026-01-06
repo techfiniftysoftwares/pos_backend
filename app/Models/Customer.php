@@ -121,14 +121,14 @@ class Customer extends Model
     }
     public function getUtilizedCreditAttribute()
     {
-        // Debt is negative (Credit Sale -> Payment type -> reduces balance)
-        // So Utilized is the absolute value of negative balance
-        return max(0, -1 * (float) $this->current_credit_balance);
+        // current_credit_balance is positive for debt (sales add to it, payments subtract)
+        // Utilized = the amount of credit used (debt)
+        return max(0, (float) $this->current_credit_balance);
     }
 
     public function getAvailableCreditAttribute()
     {
-        // Available = Limit + Balance (since Balance is negative for debt)
-        return (float) $this->credit_limit + (float) $this->current_credit_balance;
+        // Available = Limit - Balance (Balance is positive debt)
+        return max(0, (float) $this->credit_limit - (float) $this->current_credit_balance);
     }
 }

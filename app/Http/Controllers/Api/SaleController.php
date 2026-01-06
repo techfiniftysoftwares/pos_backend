@@ -412,6 +412,19 @@ class SaleController extends Controller
                 'completed_at' => now(),
             ]);
 
+            // Create credit transaction for credit sales (record the debt)
+            if ($request->payment_type === 'credit') {
+                CustomerCreditTransaction::create([
+                    'customer_id' => $request->customer_id,
+                    'transaction_type' => 'sale',
+                    'amount' => round($grandTotal, 2),
+                    'reference_number' => $sale->sale_number,
+                    'processed_by' => Auth::id(),
+                    'branch_id' => $request->branch_id,
+                    'notes' => "Credit sale: {$sale->sale_number}",
+                ]);
+            }
+
             // Create Sale Items and Deduct Stock Using FIFO
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['product_id']);
@@ -879,6 +892,20 @@ class SaleController extends Controller
                         'exchange_rate' => $paymentData['exchange_rate'], // Payment -> Sale Rate
                         'amount_in_sale_currency' => round($amountInSaleCurrency, 2),
                     ]);
+
+                    // Create credit transaction for credit sales (reduce the debt)
+                    if ($sale->is_credit_sale && $sale->customer_id) {
+                        CustomerCreditTransaction::create([
+                            'customer_id' => $sale->customer_id,
+                            'transaction_type' => 'payment',
+                            'amount' => round($amountInSaleCurrency, 2),
+                            'payment_method_id' => $paymentData['payment_method_id'],
+                            'reference_number' => $payment->id,
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $sale->branch_id,
+                            'notes' => "Payment for credit sale: {$sale->sale_number}",
+                        ]);
+                    }
                 }
             }
 
