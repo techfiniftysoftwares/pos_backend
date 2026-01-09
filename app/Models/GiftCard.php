@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 
 class GiftCard extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'business_id',
@@ -86,10 +87,10 @@ class GiftCard extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active')
-                     ->where(function($q) {
-                         $q->whereNull('expires_at')
-                           ->orWhere('expires_at', '>', now());
-                     });
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
     }
 
     // Auto-generate card number and set issued_at

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockMovement extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'business_id',
@@ -82,13 +83,13 @@ class StockMovement extends Model
     public function scopeStockIn($query)
     {
         return $query->whereIn('movement_type', ['purchase', 'transfer_in', 'return_in', 'adjustment'])
-                     ->where('quantity', '>', 0);
+            ->where('quantity', '>', 0);
     }
 
     public function scopeStockOut($query)
     {
         return $query->whereIn('movement_type', ['sale', 'transfer_out', 'return_out', 'damage', 'expired', 'adjustment'])
-                     ->where('quantity', '<', 0);
+            ->where('quantity', '<', 0);
     }
 
     public function scopeDateRange($query, $startDate, $endDate)
@@ -107,8 +108,8 @@ class StockMovement extends Model
         return $this->quantity < 0;
     }
 
-  public function getAbsoluteQuantityAttribute()
-{
-    return abs((float) $this->quantity);
-}
+    public function getAbsoluteQuantityAttribute()
+    {
+        return abs((float) $this->quantity);
+    }
 }

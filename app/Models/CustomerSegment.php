@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CustomerSegment extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'business_id',
@@ -31,8 +32,8 @@ class CustomerSegment extends Model
     public function customers()
     {
         return $this->belongsToMany(Customer::class, 'customer_segment')
-                    ->withPivot('assigned_at', 'assigned_by')
-                    ->withTimestamps();
+            ->withPivot('assigned_at', 'assigned_by')
+            ->withTimestamps();
     }
 
     // Helper Methods

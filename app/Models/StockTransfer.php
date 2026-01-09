@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockTransfer extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'transfer_number',

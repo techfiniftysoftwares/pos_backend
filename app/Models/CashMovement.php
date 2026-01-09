@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CashMovement extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'cash_reconciliation_id',

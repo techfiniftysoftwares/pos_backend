@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Model;
 
 class HeldSale extends Model
 {
+    use ScopedByBusiness;
     protected $fillable = [
         'business_id',
         'branch_id',

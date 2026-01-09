@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, ScopedByBusiness;
 
     protected $fillable = [
         'business_id',
@@ -37,16 +38,16 @@ class Payment extends Model
         'processed_by',
     ];
 
-   protected $casts = [
-    'amount' => 'decimal:2',
-    'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
-    'amount_in_base_currency' => 'decimal:2',
-    'fee_amount' => 'decimal:2',
-    'net_amount' => 'decimal:2',
-    'payment_date' => 'datetime',
-    'reconciled_at' => 'datetime',
-    'metadata' => 'array',
-];
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
+        'amount_in_base_currency' => 'decimal:2',
+        'fee_amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+        'payment_date' => 'datetime',
+        'reconciled_at' => 'datetime',
+        'metadata' => 'array',
+    ];
     // Relationships
     public function business()
     {

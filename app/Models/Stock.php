@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ScopedByBusiness;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Stock extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedByBusiness;
 
     protected $fillable = [
         'business_id',
@@ -49,15 +50,15 @@ class Stock extends Model
     public function movements()
     {
         return $this->hasMany(StockMovement::class, 'product_id', 'product_id')
-                    ->where('branch_id', $this->branch_id);
+            ->where('branch_id', $this->branch_id);
     }
     /**
- * Get all batches for this stock (for FIFO tracking)
- */
-public function batches()
-{
-    return $this->hasMany(StockBatch::class);
-}
+     * Get all batches for this stock (for FIFO tracking)
+     */
+    public function batches()
+    {
+        return $this->hasMany(StockBatch::class);
+    }
 
     // Scopes
     public function scopeForBusiness($query, $businessId)
@@ -72,9 +73,9 @@ public function batches()
 
     public function scopeLowStock($query)
     {
-        return $query->whereHas('product', function($q) {
+        return $query->whereHas('product', function ($q) {
             $q->where('track_inventory', true)
-              ->whereColumn('stocks.quantity', '<', 'products.minimum_stock_level');
+                ->whereColumn('stocks.quantity', '<', 'products.minimum_stock_level');
         });
     }
 
@@ -92,7 +93,7 @@ public function batches()
     public function getIsLowStockAttribute()
     {
         return $this->product->track_inventory &&
-               $this->quantity < $this->product->minimum_stock_level;
+            $this->quantity < $this->product->minimum_stock_level;
     }
 
     public function getIsOutOfStockAttribute()
