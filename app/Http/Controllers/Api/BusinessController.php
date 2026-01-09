@@ -21,13 +21,13 @@ class BusinessController extends Controller
             $search = $request->input('search');
             $status = $request->input('status');
 
-            $query = Business::query()->with(['mainBranch']);
+            $query = Business::query()->with(['mainBranch', 'baseCurrency']);
 
             // Apply filters
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -36,7 +36,7 @@ class BusinessController extends Controller
             }
 
             $businesses = $query->orderBy('created_at', 'desc')
-                               ->paginate($perPage);
+                ->paginate($perPage);
 
             return successResponse('Businesses retrieved successfully', $businesses);
         } catch (\Exception $e) {
@@ -48,51 +48,51 @@ class BusinessController extends Controller
      * Create new business
      */
     public function store(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:businesses,email',
-        'phone' => 'nullable|string|max:20',
-        'address' => 'nullable|string',
-        'status' => 'sometimes|in:active,inactive,suspended',
-        'base_currency_id' => 'required|exists:currencies,id',
-    ]);
-
-    if ($validator->fails()) {
-        return validationErrorResponse($validator->errors());
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $business = Business::create($validator->validated());
-
-        // Create main branch automatically
-        $mainBranch = Branch::create([
-            'business_id' => $business->id,
-            'name' => $business->name . ' - Main Branch',
-            'code' => 'MAIN001',
-            'phone' => $business->phone,
-            'address' => $business->address ?? 'Main Office',
-            'is_main_branch' => true,
-            'is_active' => true
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:businesses,email',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'status' => 'sometimes|in:active,inactive,suspended',
+            'base_currency_id' => 'required|exists:currencies,id',
         ]);
 
-        DB::commit();
+        if ($validator->fails()) {
+            return validationErrorResponse($validator->errors());
+        }
 
-        // Load currency relationship
-        $business->load('baseCurrency');
+        try {
+            DB::beginTransaction();
 
-        return successResponse('Business created successfully', [
-            'business' => $business,
-            'main_branch' => $mainBranch
-        ], 201);
+            $business = Business::create($validator->validated());
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return serverErrorResponse('Failed to create business', $e->getMessage());
+            // Create main branch automatically
+            $mainBranch = Branch::create([
+                'business_id' => $business->id,
+                'name' => $business->name . ' - Main Branch',
+                'code' => 'MAIN-' . str_pad($business->id, 4, '0', STR_PAD_LEFT),
+                'phone' => $business->phone,
+                'address' => $business->address ?? 'Main Office',
+                'is_main_branch' => true,
+                'is_active' => true
+            ]);
+
+            DB::commit();
+
+            // Load currency relationship
+            $business->load('baseCurrency');
+
+            return successResponse('Business created successfully', [
+                'business' => $business,
+                'main_branch' => $mainBranch
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return serverErrorResponse('Failed to create business', $e->getMessage());
+        }
     }
-}
     /**
      * Get specific business
      */
@@ -112,7 +112,7 @@ class BusinessController extends Controller
                 'branches_count' => $business->branches->count(),
                 'active_branches_count' => $business->activeBranches->count(),
                 'users_count' => $business->users->count(),
-                'branches' => $business->branches->map(function($branch) {
+                'branches' => $business->branches->map(function ($branch) {
                     return [
                         'id' => $branch->id,
                         'name' => $branch->name,
@@ -141,6 +141,7 @@ class BusinessController extends Controller
             'phone' => 'sometimes|nullable|string|max:20',
             'address' => 'sometimes|nullable|string',
             'status' => 'sometimes|in:active,inactive,suspended',
+            'base_currency_id' => 'sometimes|exists:currencies,id',
         ]);
 
         if ($validator->fails()) {

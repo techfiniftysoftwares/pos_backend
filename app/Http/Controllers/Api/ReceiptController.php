@@ -17,7 +17,7 @@ class ReceiptController extends Controller
             $sale->load([
                 'customer',
                 'cashier',
-                'branch',
+                'branch.business',
                 'items.product',
                 'salePayments.payment.paymentMethod'
             ]);
@@ -26,7 +26,8 @@ class ReceiptController extends Controller
                 'receipt_number' => $sale->sale_number,
                 'invoice_number' => $sale->invoice_number,
                 'company_details' => [
-                    'name' => $sale->business->name ?? 'Your Business Name',
+                    'name' => $sale->branch->business->name ?? 'Your Business Name',
+                    'branch_name' => $sale->branch->name ?? '',
                     'address' => $sale->branch->address ?? 'Business Address',
                     'phone' => $sale->branch->phone ?? 'Phone Number',
                 ],
