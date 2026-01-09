@@ -13,13 +13,15 @@ return new class extends Migration {
     public function up(): void
     {
         // First add the column as nullable
-        Schema::table('products', function (Blueprint $table) {
-            $table->foreignId('currency_id')
-                ->nullable()
-                ->after('supplier_id')
-                ->constrained('currencies')
-                ->onDelete('restrict');
-        });
+        if (!Schema::hasColumn('products', 'currency_id')) {
+            Schema::table('products', function (Blueprint $table) {
+                $table->foreignId('currency_id')
+                    ->nullable()
+                    ->after('supplier_id')
+                    ->constrained('currencies')
+                    ->onDelete('restrict');
+            });
+        }
 
         // Backfill existing products with base currency
         $baseCurrency = DB::table('currencies')->where('is_base', true)->first();

@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Unit;
 use App\Models\Supplier;
 use App\Models\Currency;
+use App\Models\Tax;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +55,7 @@ class ProductController extends Controller
             // Validate sort direction
             $sortDirection = strtolower($sortDirection) === 'desc' ? 'desc' : 'asc';
 
-            $query = Product::with(['category', 'unit', 'supplier', 'currency'])
+            $query = Product::with(['category', 'unit', 'supplier', 'currency', 'tax'])
                 ->withSum('stocks', 'quantity')
                 ->forBusiness($businessId);
 
@@ -118,7 +119,9 @@ class ProductController extends Controller
             'cost_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'minimum_stock_level' => 'nullable|integer|min:0',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_rate' => 'nullable|numeric|min:0|max:100', // Deprecated but allow
+            'tax_id' => 'nullable|exists:taxes,id',
+            'tax_inclusive' => 'sometimes|boolean',
             'track_inventory' => 'sometimes|boolean',
             'allow_negative_stock' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
@@ -176,6 +179,8 @@ class ProductController extends Controller
                 'selling_price' => $request->selling_price,
                 'minimum_stock_level' => $request->input('minimum_stock_level', 0),
                 'tax_rate' => $request->input('tax_rate', 0),
+                'tax_id' => $request->input('tax_id'),
+                'tax_inclusive' => $request->input('tax_inclusive', false),
                 'track_inventory' => $request->input('track_inventory', true),
                 'allow_negative_stock' => $request->input('allow_negative_stock', false),
                 'is_active' => $request->input('is_active', true),
@@ -205,7 +210,7 @@ class ProductController extends Controller
 
             DB::commit();
 
-            $product->load(['category', 'unit', 'supplier', 'currency']);
+            $product->load(['category', 'unit', 'supplier', 'currency', 'tax']);
 
             return successResponse(
                 'Product created successfully',
@@ -240,7 +245,7 @@ class ProductController extends Controller
                 return errorResponse('Unauthorized access to this product', 403);
             }
 
-            $product->load(['category', 'unit', 'supplier', 'currency'])
+            $product->load(['category', 'unit', 'supplier', 'currency', 'tax'])
                 ->loadSum('stocks', 'quantity');
 
             $productData = $this->transformProduct($product);
@@ -283,6 +288,8 @@ class ProductController extends Controller
             'selling_price' => 'sometimes|numeric|min:0',
             'minimum_stock_level' => 'sometimes|integer|min:0',
             'tax_rate' => 'sometimes|numeric|min:0|max:100',
+            'tax_id' => 'nullable|exists:taxes,id',
+            'tax_inclusive' => 'sometimes|boolean',
             'track_inventory' => 'sometimes|boolean',
             'allow_negative_stock' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
@@ -335,6 +342,8 @@ class ProductController extends Controller
                 'selling_price',
                 'minimum_stock_level',
                 'tax_rate',
+                'tax_id',
+                'tax_inclusive',
                 'track_inventory',
                 'allow_negative_stock',
                 'is_active',
@@ -370,7 +379,7 @@ class ProductController extends Controller
 
             DB::commit();
 
-            $product->load(['category', 'unit', 'supplier', 'currency']);
+            $product->load(['category', 'unit', 'supplier', 'currency', 'tax']);
 
             return updatedResponse(
                 $this->transformProduct($product),
@@ -591,6 +600,13 @@ class ProductController extends Controller
                 'name' => $product->currency->name
             ] : null,
             'currency_id' => $product->currency_id,
+            'tax' => $product->tax ? [
+                'id' => $product->tax->id,
+                'name' => $product->tax->name,
+                'rate' => (float) $product->tax->rate
+            ] : null,
+            'tax_id' => $product->tax_id,
+            'tax_inclusive' => (bool) $product->tax_inclusive,
             'created_at' => $product->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $product->updated_at->format('Y-m-d H:i:s'),
         ];

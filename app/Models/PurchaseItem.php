@@ -15,6 +15,7 @@ class PurchaseItem extends Model
         'quantity_ordered',
         'quantity_received',
         'unit_cost',
+        'tax_id',
         'tax_rate',
         'tax_amount',
         'line_total',

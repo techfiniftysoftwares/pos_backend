@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\ExchangeRateSourceController;
 use App\Http\Controllers\Api\CurrencyController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\RevenueStreamController;
+use App\Http\Controllers\Api\TaxController;
 use App\Http\Controllers\Api\RevenueEntryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\SalesDashboardController;
@@ -390,6 +391,14 @@ Route::middleware(['auth:api'])->group(function () {
         Route::patch('/{revenueStream}/toggle-status', [RevenueStreamController::class, 'toggleStatus']);
     });
 
+
+    // Tax routes
+    Route::prefix('taxes')->group(function () {
+        Route::get('/', [TaxController::class, 'index']);
+        Route::post('/', [TaxController::class, 'store']);
+        Route::put('/{tax}', [TaxController::class, 'update']);
+        Route::delete('/{tax}', [TaxController::class, 'destroy']);
+    });
 
     Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
     Route::get('/admin-dashboard/user-growth-trend', [AdminDashboardController::class, 'getUserGrowthTrend']);

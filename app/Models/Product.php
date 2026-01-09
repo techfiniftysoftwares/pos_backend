@@ -15,6 +15,7 @@ class Product extends Model
         'category_id',
         'unit_id',
         'supplier_id',
+        'tax_id',
         'currency_id',
         'name',
         'sku',
@@ -24,7 +25,8 @@ class Product extends Model
         'cost_price',
         'selling_price',
         'minimum_stock_level',
-        'tax_rate',
+        'tax_rate', // Deprecated/Fallback
+        'tax_inclusive',
         'track_inventory',
         'allow_negative_stock',
         'is_active',
@@ -34,6 +36,7 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'tax_rate' => 'decimal:2',
+        'tax_inclusive' => 'boolean',
         'track_inventory' => 'boolean',
         'allow_negative_stock' => 'boolean',
         'is_active' => 'boolean',
@@ -68,6 +71,27 @@ class Product extends Model
     public function currency()
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    public function tax()
+    {
+        return $this->belongsTo(Tax::class);
+    }
+
+    public function getTaxRateAttribute($value)
+    {
+        // If tax_id is present and relation loaded (or easy to load), use that.
+        // We avoid N+1 by assuming tax is eager loaded or we just rely on explicit access.
+        // But for getting simple rate:
+        if ($this->tax_id) {
+            // If relation is not loaded, this might cause N+1 loop if we are not careful listing products.
+            // Ideally we always eager load 'tax'.
+            // For now, let's just return the column value if relation not loaded to be safe, 
+            // OR return the column value as fallback.
+            // Actually, if tax_id is set, the tax_rate column might be null.
+            return $this->tax ? $this->tax->rate : 0;
+        }
+        return $value;
     }
 
     // Will add later when Stock model exists

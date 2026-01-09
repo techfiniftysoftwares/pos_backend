@@ -170,17 +170,26 @@ class SaleController extends Controller
             $itemsBreakdown = [];
 
             foreach ($items as $item) {
-                $product = Product::findOrFail($item['product_id']);
+                $product = Product::with('tax')->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
                 $unitPrice = $product->selling_price;
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                $lineTotal = ($unitPrice * $quantity) - $itemDiscount;
-                $taxRate = $product->tax_rate ?? 0;
+                $baseLineTotal = ($unitPrice * $quantity) - $itemDiscount;
+                $taxRate = $product->tax ? $product->tax->rate : ($product->tax_rate ?? 0);
+                $isTaxInclusive = $product->tax_inclusive;
 
-                // Tax on Gross (User Requirement: Tax = Total * Rate)
-                $taxAmount = ($lineTotal * $taxRate) / 100;
-                $lineSubtotal = $lineTotal - $taxAmount; // Net Amount
+                if ($isTaxInclusive) {
+                    // Tax on Gross (User Requirement: Tax = Total * Rate / 100 for inclusive)
+                    // Or standard VAT? Sticking to user's previous "Tax is % of inclusive total"
+                    $taxAmount = ($baseLineTotal * $taxRate) / 100;
+                    $lineSubtotal = $baseLineTotal - $taxAmount; // Net Amount
+                } else {
+                    // Exclusive: Price is Net
+                    $lineSubtotal = $baseLineTotal;
+                    $taxAmount = ($lineSubtotal * $taxRate) / 100;
+                    // Gross = Net + Tax
+                }
 
                 $subtotal += $lineSubtotal;
                 $totalTax += $taxAmount;
@@ -192,9 +201,9 @@ class SaleController extends Controller
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'discount_amount' => $itemDiscount,
-                    'tax_rate' => $taxRate,
+                    'tax_rate' => (float) $taxRate,
                     'tax_amount' => round($taxAmount, 2),
-                    'line_total' => round($lineTotal, 2),
+                    'line_total' => round($isTaxInclusive ? $baseLineTotal : ($lineSubtotal + $taxAmount), 2), // Show Gross
                 ];
             }
 
@@ -303,7 +312,7 @@ class SaleController extends Controller
             $totalDiscount = 0;
 
             foreach ($request->items as $item) {
-                $product = Product::with('currency')->findOrFail($item['product_id']);
+                $product = Product::with(['currency', 'tax'])->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
                 $unitPrice = $product->selling_price; // In product currency
 
@@ -331,13 +340,17 @@ class SaleController extends Controller
 
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                $lineTotalInclusive = ($unitPrice * $quantity) - $itemDiscount;
-                $taxRate = $product->tax_rate ?? 0;
+                $baseLineTotal = ($unitPrice * $quantity) - $itemDiscount;
+                $taxRate = $product->tax ? $product->tax->rate : ($product->tax_rate ?? 0);
+                $isTaxInclusive = $product->tax_inclusive;
 
-                // Tax Inclusive Calculation (Tax on Gross):
-                // Tax = Inclusive * Rate
-                $taxAmount = ($lineTotalInclusive * $taxRate) / 100;
-                $netSubtotal = $lineTotalInclusive - $taxAmount;
+                if ($isTaxInclusive) {
+                    $taxAmount = ($baseLineTotal * $taxRate) / 100;
+                    $netSubtotal = $baseLineTotal - $taxAmount;
+                } else {
+                    $netSubtotal = $baseLineTotal;
+                    $taxAmount = ($netSubtotal * $taxRate) / 100;
+                }
 
                 $subtotal += $netSubtotal;
                 $totalTax += $taxAmount;
@@ -427,22 +440,46 @@ class SaleController extends Controller
 
             // Create Sale Items and Deduct Stock Using FIFO
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
+                $product = Product::with(['currency', 'tax'])->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
                 $unitPrice = $product->selling_price; // In product currency (base currency)
 
+                // Determine product currency for THIS item
+                $itemProductCurrency = $product->currency ?? $baseCurrency;
+
+                // Get exchange rate for product currency → sale currency (if needed)
+                $itemProductToSaleRate = 1.0;
+                if ($itemProductCurrency->id !== $saleCurrency->id) {
+                    $conversionRate = ExchangeRate::getCurrentRate(
+                        $itemProductCurrency->id,
+                        $saleCurrency->id,
+                        $request->business_id
+                    );
+                    if ($conversionRate) {
+                        $itemProductToSaleRate = $conversionRate->rate;
+                    }
+                }
+
                 // Convert product price to sale currency if needed
-                if ($productCurrency->id !== $saleCurrency->id) {
-                    $unitPrice = $unitPrice * $productToSaleRate;
+                if ($itemProductCurrency->id !== $saleCurrency->id) {
+                    $unitPrice = $unitPrice * $itemProductToSaleRate;
                 }
 
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
-                // Tax Inclusive Logic (Tax on Gross)
-                $lineTotal = ($unitPrice * $quantity) - $itemDiscount; // Total is Inclusive
-                $taxRate = $product->tax_rate ?? 0;
-                $taxAmount = ($lineTotal * $taxRate) / 100;
-                $lineSubtotal = $lineTotal - $taxAmount; // Net
+                $baseLineTotal = ($unitPrice * $quantity) - $itemDiscount;
+                $taxRate = $product->tax ? $product->tax->rate : ($product->tax_rate ?? 0);
+                $isTaxInclusive = $product->tax_inclusive;
+
+                if ($isTaxInclusive) {
+                    $taxAmount = ($baseLineTotal * $taxRate) / 100;
+                    $lineSubtotal = $baseLineTotal - $taxAmount; // Net
+                    $lineTotal = $baseLineTotal; // Gross
+                } else {
+                    $lineSubtotal = $baseLineTotal; // Net
+                    $taxAmount = ($lineSubtotal * $taxRate) / 100;
+                    $lineTotal = $lineSubtotal + $taxAmount; // Gross
+                }
 
                 // === FIFO BATCH DEDUCTION LOGIC ===
                 $stock = Stock::where('product_id', $product->id)
@@ -493,6 +530,8 @@ class SaleController extends Controller
                     'unit_cost' => $averageUnitCost,
                     'tax_rate' => $taxRate,
                     'tax_amount' => round($taxAmount, 2),
+                    'tax_inclusive' => $isTaxInclusive,
+                    'tax_name' => $product->tax ? $product->tax->name : null,
                     'discount_amount' => $itemDiscount,
                     'line_total' => round($lineTotal, 2),
                 ]);

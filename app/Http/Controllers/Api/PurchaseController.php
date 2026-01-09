@@ -125,6 +125,7 @@ class PurchaseController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
             'currency' => 'nullable|string|size:3',
             'currency_id' => 'nullable|exists:currencies,id', // Added validation
             'exchange_rate' => 'nullable|numeric|min:0',
@@ -185,7 +186,6 @@ class PurchaseController extends Controller
                 }
             }
 
-            $grandTotal = $subtotal + $totalTax;
             $grandTotal = $subtotal + $totalTax;
 
             // Resolve Currency ID and Code
@@ -253,6 +253,7 @@ class PurchaseController extends Controller
                     'quantity_ordered' => $quantity,
                     'unit_cost' => $unitCost,
                     'tax_rate' => $taxRate,
+                    'tax_id' => $item['tax_id'] ?? null,
                     'tax_amount' => $lineTax,
                     'line_total' => $lineTotal,
                     'notes' => $item['notes'] ?? null,
@@ -317,6 +318,7 @@ class PurchaseController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
             'status' => 'sometimes|in:draft,ordered',
             'invoice_number' => 'nullable|string',
             'notes' => 'nullable|string',
@@ -403,6 +405,7 @@ class PurchaseController extends Controller
                         'quantity_ordered' => $quantity,
                         'unit_cost' => $unitCost,
                         'tax_rate' => $taxRate,
+                        'tax_id' => $item['tax_id'] ?? null,
                         'tax_amount' => $lineTax,
                         'line_total' => $lineTotal,
                         'notes' => $item['notes'] ?? null,
