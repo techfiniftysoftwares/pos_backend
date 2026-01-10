@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable implements OAuthenticatable
 {
@@ -19,7 +20,6 @@ class User extends Authenticatable implements OAuthenticatable
         'email',
         'password',
         'phone',
-        'role_id',
         'business_id',
         'primary_branch_id',
         'pin',
@@ -45,9 +45,56 @@ class User extends Authenticatable implements OAuthenticatable
     ];
 
     // Relationships
-    public function role()
+
+    /**
+     * Get the role for the user's primary branch (accessor)
+     * Note: This is not a true relationship, use getPrimaryRole() for the actual Role model
+     */
+    public function getRoleAttribute()
     {
-        return $this->belongsTo(Role::class);
+        return $this->getPrimaryRole();
+    }
+
+    /**
+     * All branch-role assignments for this user
+     */
+    public function branchRoles()
+    {
+        return $this->belongsToMany(Branch::class, 'user_branch_roles')
+            ->withPivot('role_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the role for a specific branch
+     */
+    public function getRoleForBranch($branchId)
+    {
+        // 1. Try specific branch assignment
+        $pivot = DB::table('user_branch_roles')
+            ->where('user_id', $this->id)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if ($pivot) {
+            return Role::find($pivot->role_id);
+        }
+
+        // 2. Try global assignment
+        $globalPivot = DB::table('user_branch_roles')
+            ->where('user_id', $this->id)
+            ->whereNull('branch_id')
+            ->first();
+
+        return $globalPivot ? Role::find($globalPivot->role_id) : null;
+    }
+
+    /**
+     * Get role for primary branch (convenience method)
+     */
+    public function getPrimaryRole()
+    {
+        return $this->getRoleForBranch($this->primary_branch_id);
     }
 
     public function business()
@@ -78,16 +125,16 @@ class User extends Authenticatable implements OAuthenticatable
 
     public function scopeForBranch($query, $branchId)
     {
-        return $query->whereHas('branches', function($q) use ($branchId) {
+        return $query->whereHas('branches', function ($q) use ($branchId) {
             $q->where('branches.id', $branchId);
         });
     }
 
     public function scopePinNotLocked($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->whereNull('pin_locked_until')
-              ->orWhere('pin_locked_until', '<=', now());
+                ->orWhere('pin_locked_until', '<=', now());
         });
     }
 
@@ -147,7 +194,27 @@ class User extends Authenticatable implements OAuthenticatable
 
     public function hasPermission(int $moduleId, int $submoduleId, string $action): bool
     {
-        return $this->role->permissions()
+        $role = $this->getPrimaryRole();
+        if (!$role)
+            return false;
+
+        return $role->permissions()
+            ->where('module_id', $moduleId)
+            ->where('submodule_id', $submoduleId)
+            ->where('action', $action)
+            ->exists();
+    }
+
+    /**
+     * Check permission for a specific branch
+     */
+    public function hasPermissionForBranch(int $branchId, int $moduleId, int $submoduleId, string $action): bool
+    {
+        $role = $this->getRoleForBranch($branchId);
+        if (!$role)
+            return false;
+
+        return $role->permissions()
             ->where('module_id', $moduleId)
             ->where('submodule_id', $submoduleId)
             ->where('action', $action)
@@ -156,8 +223,23 @@ class User extends Authenticatable implements OAuthenticatable
 
     public function canAccessBranch(int $branchId): bool
     {
+        if ($this->hasGlobalAccess()) {
+            return true;
+        }
+
         return $this->primary_branch_id === $branchId ||
-               $this->branches()->where('branches.id', $branchId)->exists();
+            $this->branches()->where('branches.id', $branchId)->exists();
+    }
+
+    /**
+     * Check if user has Global access (role assigned with no specific branch)
+     */
+    public function hasGlobalAccess(): bool
+    {
+        return DB::table('user_branch_roles')
+            ->where('user_id', $this->id)
+            ->whereNull('branch_id')
+            ->exists();
     }
 
     public function generateEmployeeId(): string

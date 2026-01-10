@@ -32,8 +32,8 @@ class PinAuthController extends Controller
 
         try {
             $user = User::where('employee_id', $request->employee_id)
-                       ->with(['role', 'business', 'primaryBranch'])
-                       ->first();
+                ->with(['business', 'primaryBranch', 'branches'])
+                ->first();
 
             if (!$user) {
                 return errorResponse('Invalid employee ID', 401);
@@ -74,17 +74,26 @@ class PinAuthController extends Controller
             // Create access token
             $accessToken = $user->createToken('POS-Access', ['pos:access'])->accessToken;
 
+            // Get role for the requested branch
+            $branchRole = $user->getRoleForBranch($request->branch_id);
+
             return successResponse('PIN login successful', [
                 'token' => $accessToken,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'employee_id' => $user->employee_id,
-                    'role' => $user->role->only(['id', 'name']),
+                    'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
                     'business' => $user->business->only(['id', 'name']),
                     'primary_branch' => $user->primaryBranch->only(['id', 'name', 'code']),
-                    'accessible_branches' => $user->branches->map(function($branch) {
-                        return $branch->only(['id', 'name', 'code']);
+                    'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                        $role = $user->getRoleForBranch($branch->id);
+                        return [
+                            'id' => $branch->id,
+                            'name' => $branch->name,
+                            'code' => $branch->code,
+                            'role' => $role ? $role->only(['id', 'name']) : null,
+                        ];
                     }),
                     'last_login_at' => $user->last_login_at?->format('Y-m-d H:i:s')
                 ]

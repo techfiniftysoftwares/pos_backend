@@ -31,8 +31,8 @@ class AuthController extends Controller
         $field = filter_var($request->identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
         $user = User::where($field, $request->identifier)
-                   ->with(['role', 'business', 'primaryBranch'])
-                   ->first();
+            ->with(['business', 'primaryBranch', 'branches', 'branchRoles'])
+            ->first();
 
         if (!$user) {
             return notFoundResponse('User not found');
@@ -48,15 +48,20 @@ class AuthController extends Controller
         }
 
         // Attempt authentication
-        if (Auth::attempt([
-            $field => $request->identifier,
-            'password' => $request->password
-        ])) {
+        if (
+            Auth::attempt([
+                $field => $request->identifier,
+                'password' => $request->password
+            ])
+        ) {
             // Create access token
             $accessToken = $user->createToken('Web-Access')->accessToken;
 
             // Update last successful login
             $user->update(['last_login_at' => now()]);
+
+            // Get the role for primary branch
+            $primaryRole = $user->getPrimaryRole();
 
             return successResponse('Login successful', [
                 'token' => $accessToken,
@@ -65,11 +70,17 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'employee_id' => $user->employee_id,
-                    'role' => $user->role,
+                    'role' => $primaryRole,
                     'business' => $user->business->only(['id', 'name']),
                     'primary_branch' => $user->primaryBranch?->only(['id', 'name', 'code']),
-                    'accessible_branches' => $user->branches->map(function($branch) {
-                        return $branch->only(['id', 'name', 'code']);
+                    'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                        $branchRole = $user->getRoleForBranch($branch->id);
+                        return [
+                            'id' => $branch->id,
+                            'name' => $branch->name,
+                            'code' => $branch->code,
+                            'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
+                        ];
                     })
                 ]
             ]);

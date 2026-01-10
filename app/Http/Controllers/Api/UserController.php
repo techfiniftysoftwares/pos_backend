@@ -12,6 +12,7 @@ use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -61,7 +62,7 @@ class UserController extends Controller
             }
 
             // Execute query with pagination and relationships
-            $users = $query->with(['role'])
+            $users = $query->with(['business', 'primaryBranch', 'branches'])
                 ->paginate($perPage)
                 ->through(function ($user) {
                     return $this->transformUser($user);
@@ -174,11 +175,12 @@ class UserController extends Controller
         try {
             // Load necessary relationships that exist in the User model
             $user->load([
-                'role',
                 'business',
                 'primaryBranch',
                 'branches'
             ]);
+
+            $primaryRole = $user->getPrimaryRole();
 
             $userData = [
                 'id' => $user->id,
@@ -190,9 +192,9 @@ class UserController extends Controller
                 'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
                 'created_at' => $user->created_at->format('Y-m-d H:i:s'),
                 'updated_at' => $user->updated_at->format('Y-m-d H:i:s'),
-                'role' => $user->role ? [
-                    'id' => $user->role->id,
-                    'name' => $user->role->name
+                'role' => $primaryRole ? [
+                    'id' => $primaryRole->id,
+                    'name' => $primaryRole->name
                 ] : null,
                 'business' => $user->business ? [
                     'id' => $user->business->id,
@@ -203,11 +205,13 @@ class UserController extends Controller
                     'name' => $user->primaryBranch->name,
                     'code' => $user->primaryBranch->code
                 ] : null,
-                'accessible_branches' => $user->branches->map(function ($branch) {
+                'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                    $branchRole = $user->getRoleForBranch($branch->id);
                     return [
                         'id' => $branch->id,
                         'name' => $branch->name,
-                        'code' => $branch->code
+                        'code' => $branch->code,
+                        'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
                     ];
                 }),
                 'pin_locked' => $user->isPinLocked(),
@@ -227,7 +231,7 @@ class UserController extends Controller
     {
         try {
             // Load user relationships
-            $user->load(['role', 'business', 'primaryBranch', 'branches']);
+            $user->load(['business', 'primaryBranch', 'branches']);
 
             // Get all branches for the user's business
             $availableBranches = \App\Models\Branch::where('business_id', $user->business_id)
@@ -243,6 +247,8 @@ class UserController extends Controller
                     ];
                 });
 
+            $primaryRole = $user->getPrimaryRole();
+
             $userData = [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -250,12 +256,11 @@ class UserController extends Controller
                 'phone' => $user->phone,
                 'employee_id' => $user->employee_id,
                 'is_active' => $user->is_active,
-                'role_id' => $user->role_id,
                 'business_id' => $user->business_id,
                 'primary_branch_id' => $user->primary_branch_id,
-                'role' => $user->role ? [
-                    'id' => $user->role->id,
-                    'name' => $user->role->name
+                'role' => $primaryRole ? [
+                    'id' => $primaryRole->id,
+                    'name' => $primaryRole->name
                 ] : null,
                 'business' => $user->business ? [
                     'id' => $user->business->id,
@@ -267,7 +272,16 @@ class UserController extends Controller
                     'code' => $user->primaryBranch->code
                 ] : null,
                 'assigned_branch_ids' => $user->branches->pluck('id')->toArray(),
-                'available_branches' => $availableBranches
+                'available_branches' => $availableBranches,
+                'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                    $branchRole = $user->getRoleForBranch($branch->id);
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'code' => $branch->code,
+                        'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
+                    ];
+                }),
             ];
 
             return successResponse('User details retrieved successfully', $userData);
@@ -321,7 +335,7 @@ class UserController extends Controller
             $user->update(['primary_branch_id' => $branchId]);
 
             // Reload user with relationships
-            $user->load(['role', 'business', 'primaryBranch', 'branches']);
+            $user->load(['business', 'primaryBranch', 'branches']);
 
             return successResponse('Primary branch updated successfully', [
                 'id' => $user->id,
@@ -352,14 +366,22 @@ class UserController extends Controller
                 'email' => 'required|string|email|unique:users',
                 'phone' => 'required|string|max:20',
                 'password' => 'required|string|min:8|confirmed',
-                'role_id' => 'required|exists:roles,id',
                 'business_id' => 'required|exists:businesses,id',
                 'primary_branch_id' => 'required|exists:branches,id',
                 'employee_id' => 'sometimes|string|max:50',
+                'branch_roles' => 'required|array|min:1',
+                'branch_roles.*.branch_id' => 'required|exists:branches,id',
+                'branch_roles.*.role_id' => 'required|exists:roles,id',
             ]);
 
             if ($validator->fails()) {
                 return validationErrorResponse($validator->errors());
+            }
+
+            // Validate primary_branch_id is included in branch_roles
+            $branchIds = collect($request->branch_roles)->pluck('branch_id')->toArray();
+            if (!in_array($request->primary_branch_id, $branchIds)) {
+                return errorResponse('Primary branch must be included in branch roles', 400);
             }
 
             DB::beginTransaction();
@@ -369,16 +391,24 @@ class UserController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->password),
-                'role_id' => $request->role_id,
                 'business_id' => $request->business_id,
                 'primary_branch_id' => $request->primary_branch_id,
                 'employee_id' => $request->employee_id,
                 'is_active' => true,
             ]);
 
-            // Assign branches if provided
-            if ($request->has('branch_ids')) {
-                $user->branches()->sync($request->branch_ids);
+            // Sync user_branches (accessible branches)
+            $user->branches()->sync($branchIds);
+
+            // Sync user_branch_roles (role per branch)
+            foreach ($request->branch_roles as $branchRole) {
+                DB::table('user_branch_roles')->insert([
+                    'user_id' => $user->id,
+                    'branch_id' => $branchRole['branch_id'],
+                    'role_id' => $branchRole['role_id'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
             DB::commit();
@@ -413,7 +443,7 @@ class UserController extends Controller
         }
     }
     /**
-     * Update user specifics including role, status, and branch assignments
+     * Update user specifics including roles per branch, status, and branch assignments
      */
     public function updateUserSpecifics(Request $request, User $user)
     {
@@ -422,10 +452,10 @@ class UserController extends Controller
                 'name' => 'sometimes|string|max:255',
                 'email' => 'sometimes|string|email|unique:users,email,' . $user->id,
                 'phone' => 'sometimes|string|max:20',
-                'role_id' => 'sometimes|exists:roles,id',
                 'primary_branch_id' => 'sometimes|exists:branches,id',
-                'branch_ids' => 'sometimes|array',
-                'branch_ids.*' => 'exists:branches,id',
+                'branch_roles' => 'sometimes|array',
+                'branch_roles.*.branch_id' => 'required|exists:branches,id',
+                'branch_roles.*.role_id' => 'required|exists:roles,id',
                 'is_active' => 'sometimes|boolean',
                 'password' => 'sometimes|string|min:8',
                 'password_confirmation' => 'sometimes|required_with:password|same:password',
@@ -448,14 +478,21 @@ class UserController extends Controller
                     }
                 }
 
-                // Validate all branch_ids belong to user's business
-                if (isset($validated['branch_ids'])) {
-                    $branches = \App\Models\Branch::whereIn('id', $validated['branch_ids'])->get();
+                // Validate all branch_roles belong to user's business
+                if (isset($validated['branch_roles'])) {
+                    $branchIds = collect($validated['branch_roles'])->pluck('branch_id')->toArray();
+                    $branches = \App\Models\Branch::whereIn('id', $branchIds)->get();
 
                     foreach ($branches as $branch) {
                         if ($branch->business_id !== $user->business_id) {
                             return errorResponse('All branches must belong to user\'s business', 400);
                         }
+                    }
+
+                    // Validate primary branch is in branch_roles
+                    $primaryBranchId = $validated['primary_branch_id'] ?? $user->primary_branch_id;
+                    if (!in_array($primaryBranchId, $branchIds)) {
+                        return errorResponse('Primary branch must be included in branch roles', 400);
                     }
                 }
 
@@ -468,9 +505,9 @@ class UserController extends Controller
                     $user->tokens()->delete();
                 }
 
-                // Update user details
+                // Update user details (exclude branch_roles and password from direct update)
                 $userUpdateData = collect($validated)
-                    ->except(['password', 'password_confirmation', 'branch_ids'])
+                    ->except(['password', 'password_confirmation', 'branch_roles'])
                     ->filter()
                     ->toArray();
 
@@ -480,16 +517,32 @@ class UserController extends Controller
 
                 $user->update($userUpdateData);
 
-                // Update branch assignments
-                if (isset($validated['branch_ids'])) {
-                    // Sync branches (removes old, adds new)
-                    $user->branches()->sync($validated['branch_ids']);
+                // Update branch roles
+                if (isset($validated['branch_roles'])) {
+                    $branchIds = collect($validated['branch_roles'])->pluck('branch_id')->toArray();
+
+                    // Sync user_branches (accessible branches)
+                    $user->branches()->sync($branchIds);
+
+                    // Replace user_branch_roles
+                    DB::table('user_branch_roles')->where('user_id', $user->id)->delete();
+
+                    foreach ($validated['branch_roles'] as $branchRole) {
+                        DB::table('user_branch_roles')->insert([
+                            'user_id' => $user->id,
+                            'branch_id' => $branchRole['branch_id'],
+                            'role_id' => $branchRole['role_id'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
 
                 DB::commit();
 
                 // Reload user with relationships
-                $user->load(['role', 'business', 'primaryBranch', 'branches']);
+                $user->load(['business', 'primaryBranch', 'branches', 'branchRoles']);
+                $primaryRole = $user->getPrimaryRole();
 
                 return updatedResponse([
                     'id' => $user->id,
@@ -498,26 +551,31 @@ class UserController extends Controller
                     'phone' => $user->phone,
                     'employee_id' => $user->employee_id,
                     'is_active' => $user->is_active,
-                    'role' => $user->role ? $user->role->only(['id', 'name']) : null,
+                    'role' => $primaryRole ? $primaryRole->only(['id', 'name']) : null,
                     'business' => $user->business ? $user->business->only(['id', 'name']) : null,
                     'primary_branch' => $user->primaryBranch ? [
                         'id' => $user->primaryBranch->id,
                         'name' => $user->primaryBranch->name,
                         'code' => $user->primaryBranch->code
                     ] : null,
-                    'accessible_branches' => $user->branches->map(function ($branch) {
+                    'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                        $branchRole = $user->getRoleForBranch($branch->id);
                         return [
                             'id' => $branch->id,
                             'name' => $branch->name,
-                            'code' => $branch->code
+                            'code' => $branch->code,
+                            'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
                         ];
                     })
                 ], 'User details updated successfully');
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Update user transaction error: ' . $e->getMessage());
+                Log::error($e->getTraceAsString());
                 throw $e;
             }
         } catch (\Exception $e) {
+            Log::error('Update user outer error: ' . $e->getMessage());
             return queryErrorResponse('An error occurred while updating user details.', $e->getMessage());
         }
     }
@@ -525,15 +583,18 @@ class UserController extends Controller
     public function getProfile(Request $request)
     {
         try {
-            $user = $request->user()->load(['role', 'business', 'primaryBranch', 'branches']);
+            $user = $request->user()->load(['business', 'primaryBranch', 'branches']);
 
-            if ($user->role) {
+            // Get role for primary branch
+            $primaryRole = $user->getPrimaryRole();
+
+            if ($primaryRole) {
                 // Get user permissions through role
                 $activePermissions = DB::table('role_permission')
                     ->join('permissions', 'role_permission.permission_id', '=', 'permissions.id')
                     ->join('modules', 'permissions.module_id', '=', 'modules.id')
                     ->join('submodules', 'permissions.submodule_id', '=', 'submodules.id')
-                    ->where('role_permission.role_id', $user->role->id)
+                    ->where('role_permission.role_id', $primaryRole->id)
                     ->where('modules.is_active', 1)
                     ->where('submodules.is_active', 1)
                     ->select([
@@ -555,7 +616,7 @@ class UserController extends Controller
                     ];
                 });
 
-                // Create user data array
+                // Create user data array with role per branch
                 $userData = [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -564,18 +625,20 @@ class UserController extends Controller
                     'employee_id' => $user->employee_id,
                     'is_active' => $user->is_active,
                     'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
-                    'role' => $user->role ? $user->role->only(['id', 'name']) : null,
+                    'role' => $primaryRole ? $primaryRole->only(['id', 'name']) : null,
                     'business' => $user->business ? $user->business->only(['id', 'name']) : null,
                     'primary_branch' => $user->primaryBranch ? [
                         'id' => $user->primaryBranch->id,
                         'name' => $user->primaryBranch->name,
                         'code' => $user->primaryBranch->code
                     ] : null,
-                    'accessible_branches' => $user->branches->map(function ($branch) {
+                    'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                        $branchRole = $user->getRoleForBranch($branch->id);
                         return [
                             'id' => $branch->id,
                             'name' => $branch->name,
-                            'code' => $branch->code
+                            'code' => $branch->code,
+                            'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
                         ];
                     }),
                     'permissions' => $filteredPermissions
@@ -592,18 +655,20 @@ class UserController extends Controller
                 'employee_id' => $user->employee_id,
                 'is_active' => $user->is_active,
                 'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
-                'role' => $user->role ? $user->role->only(['id', 'name']) : null,
+                'role' => null,
                 'business' => $user->business ? $user->business->only(['id', 'name']) : null,
                 'primary_branch' => $user->primaryBranch ? [
                     'id' => $user->primaryBranch->id,
                     'name' => $user->primaryBranch->name,
                     'code' => $user->primaryBranch->code
                 ] : null,
-                'accessible_branches' => $user->branches->map(function ($branch) {
+                'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
+                    $branchRole = $user->getRoleForBranch($branch->id);
                     return [
                         'id' => $branch->id,
                         'name' => $branch->name,
-                        'code' => $branch->code
+                        'code' => $branch->code,
+                        'role' => $branchRole ? $branchRole->only(['id', 'name']) : null,
                     ];
                 }),
             ]);
