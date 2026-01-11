@@ -30,33 +30,35 @@ return new class extends Migration {
             $table->unique(['user_id', 'role_id', 'branch_id']);
         });
 
-        // 2. Migrate existing data: for each user, assign their role_id to all their accessible branches
-        $users = DB::table('users')
-            ->whereNotNull('role_id')
-            ->get(['id', 'role_id']);
+        // 2. Migrate existing data only if role_id column still exists on users
+        if (Schema::hasColumn('users', 'role_id')) {
+            $users = DB::table('users')
+                ->whereNotNull('role_id')
+                ->get(['id', 'role_id']);
 
-        foreach ($users as $user) {
-            // Get user's accessible branches from user_branches pivot
-            $branchIds = DB::table('user_branches')
-                ->where('user_id', $user->id)
-                ->pluck('branch_id');
+            foreach ($users as $user) {
+                // Get user's accessible branches from user_branches pivot
+                $branchIds = DB::table('user_branches')
+                    ->where('user_id', $user->id)
+                    ->pluck('branch_id');
 
-            foreach ($branchIds as $branchId) {
-                DB::table('user_branch_roles')->insert([
-                    'user_id' => $user->id,
-                    'branch_id' => $branchId,
-                    'role_id' => $user->role_id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                foreach ($branchIds as $branchId) {
+                    DB::table('user_branch_roles')->insert([
+                        'user_id' => $user->id,
+                        'branch_id' => $branchId,
+                        'role_id' => $user->role_id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
-        }
 
-        // 3. Drop the role_id column from users
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['role_id']);
-            $table->dropColumn('role_id');
-        });
+            // 3. Drop the role_id column from users
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropForeign(['role_id']);
+                $table->dropColumn('role_id');
+            });
+        }
     }
 
     /**
