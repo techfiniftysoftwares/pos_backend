@@ -17,12 +17,6 @@ class ExchangeRateSourceSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'Central Bank of Kenya',
-                'code' => 'central_bank',
-                'description' => 'Official rates from Central Bank of Kenya',
-                'is_active' => true,
-            ],
-            [
                 'name' => 'API Provider',
                 'code' => 'api_provider',
                 'description' => 'Rates from external API service',

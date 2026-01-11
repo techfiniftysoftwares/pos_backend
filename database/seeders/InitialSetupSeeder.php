@@ -22,25 +22,26 @@ class InitialSetupSeeder extends Seeder
         try {
             $this->command->info('Starting initial setup...');
 
-            // 1. Create Super Admin Role (only with name field)
+            // 1. Create Super Admin Role (global role - no business_id)
             $this->command->info('Creating Super Admin role...');
             $adminRole = Role::create([
                 'name' => 'Super Admin',
+                'business_id' => null, // Global role
             ]);
-            $this->command->info('✓ Super Admin role created');
+            $this->command->info('✓ Super Admin role created (Global)');
 
             // 2. Create Business
             $this->command->info('Creating business...');
             $business = Business::create([
-                'name' => 'KKC Business',
-                'email' => 'business@kkc.com',
+                'name' => 'Sample Business',
+                'email' => 'business@sample.com',
                 'phone' => '+254700000000',
                 'address' => 'Nairobi, Kenya',
                 'status' => 'active',
             ]);
             $this->command->info('✓ Business created: ' . $business->name);
 
-            // 3. Create Main Branch (without email field)
+            // 3. Create Main Branch
             $this->command->info('Creating main branch...');
             $branch = Branch::create([
                 'business_id' => $business->id,
@@ -53,21 +54,40 @@ class InitialSetupSeeder extends Seeder
             ]);
             $this->command->info('✓ Main branch created: ' . $branch->name);
 
-            // 4. Create Admin User
+            // 4. Create Admin User (without role_id - will be set via pivot)
             $this->command->info('Creating admin user...');
             $user = User::create([
                 'business_id' => $business->id,
                 'primary_branch_id' => $branch->id,
-                'role_id' => $adminRole->id,
-                'name' => 'Joshua John',
-                'email' => 'joshujohn03@gmail.com',
+                'name' => 'John Doe',
+                'email' => 'johndoe@mail.com',
                 'phone' => '+254700000000',
                 'password' => Hash::make('password123'),
-                'pin' => '1234',  // Will be hashed by setPinAttribute mutator
-                'employee_id' => 'KK0001',
+                'pin' => '1234',
+                'employee_id' => 'EMP0001',
                 'is_active' => true,
             ]);
             $this->command->info('✓ Admin user created: ' . $user->name);
+
+            // 5. Assign Super Admin role to user via user_branch_roles pivot
+            // Using null branch_id for global access (applies to all branches)
+            DB::table('user_branch_roles')->insert([
+                'user_id' => $user->id,
+                'branch_id' => null, // Global access
+                'role_id' => $adminRole->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->command->info('✓ Super Admin role assigned (Global Access)');
+
+            // 6. Add user to branch via user_branches pivot
+            DB::table('user_branches')->insert([
+                'user_id' => $user->id,
+                'branch_id' => $branch->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->command->info('✓ User added to branch');
 
             DB::commit();
 
@@ -79,13 +99,13 @@ class InitialSetupSeeder extends Seeder
             $this->command->newLine();
             $this->command->info('Login Credentials:');
             $this->command->info('------------------');
-            $this->command->info('Email: joshujohn03@gmail.com');
+            $this->command->info('Email: johndoe@gmail.com');
             $this->command->info('Password: password123');
             $this->command->info('PIN: 1234');
             $this->command->newLine();
             $this->command->info('Business: ' . $business->name);
             $this->command->info('Branch: ' . $branch->name);
-            $this->command->info('Role: ' . $adminRole->name);
+            $this->command->info('Role: ' . $adminRole->name . ' (Global)');
             $this->command->newLine();
 
         } catch (\Exception $e) {
