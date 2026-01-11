@@ -10,20 +10,24 @@ return new class extends Migration {
      * Run the migrations.
      * 
      * Creates user_branch_roles pivot table for per-branch role assignments.
+     * Supports nullable branch_id for global roles that apply to all branches.
      * Migrates existing role_id data, then drops role_id from users.
      */
     public function up(): void
     {
-        // 1. Create the pivot table
+        // 1. Create the pivot table with nullable branch_id for global roles
         Schema::create('user_branch_roles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('branch_id')->nullable(); // Nullable for global roles
             $table->foreignId('role_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
 
-            // One role per branch per user
-            $table->unique(['user_id', 'branch_id']);
+            // Add foreign key for branch_id with cascade delete
+            $table->foreign('branch_id')->references('id')->on('branches')->onDelete('cascade');
+
+            // Unique constraint: user can have same role on different branches, or a global role (null branch)
+            $table->unique(['user_id', 'role_id', 'branch_id']);
         });
 
         // 2. Migrate existing data: for each user, assign their role_id to all their accessible branches
