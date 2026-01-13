@@ -36,7 +36,6 @@ class Customer extends Model
 
     protected $attributes = [
         'customer_type' => 'regular',
-        'credit_limit' => 0,
         'current_credit_balance' => 0,
         'is_active' => true,
     ];
@@ -81,6 +80,10 @@ class Customer extends Model
 
     public function hasAvailableCredit($amount)
     {
+        // If credit_limit is null, customer has unlimited credit
+        if (is_null($this->credit_limit)) {
+            return true;
+        }
         return ($this->credit_limit - $this->current_credit_balance) >= $amount;
     }
 
@@ -129,6 +132,10 @@ class Customer extends Model
 
     public function getAvailableCreditAttribute()
     {
+        // If credit_limit is null, customer has unlimited credit
+        if (is_null($this->credit_limit)) {
+            return null; // null indicates unlimited credit
+        }
         // Available = Limit - Balance (Balance is positive debt)
         return max(0, (float) $this->credit_limit - (float) $this->current_credit_balance);
     }

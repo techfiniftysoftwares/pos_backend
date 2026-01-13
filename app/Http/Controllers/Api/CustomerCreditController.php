@@ -118,8 +118,8 @@ class CustomerCreditController extends Controller
 
             $customer = Customer::findOrFail($request->customer_id);
 
-            // Check credit limit for sales
-            if ($request->transaction_type === 'sale') {
+            // Check credit limit for sales (skip if credit_limit is null = unlimited)
+            if ($request->transaction_type === 'sale' && !is_null($customer->credit_limit)) {
                 $newBalance = $customer->current_credit_balance + $request->amount;
                 if ($newBalance > $customer->credit_limit) {
                     return errorResponse('Credit limit exceeded. Available credit: ' .

@@ -395,11 +395,16 @@ class SaleController extends Controller
                 }
 
                 $customer = Customer::findOrFail($request->customer_id);
-                $availableCredit = $customer->credit_limit - $customer->current_credit_balance;
 
-                if ($grandTotal > $availableCredit) {
-                    return errorResponse("Credit limit exceeded. Available credit: {$availableCredit}", 400);
+                // Only validate credit limit if customer has a limit set (not unlimited)
+                if (!is_null($customer->credit_limit)) {
+                    $availableCredit = $customer->credit_limit - $customer->current_credit_balance;
+
+                    if ($grandTotal > $availableCredit) {
+                        return errorResponse("Credit limit exceeded. Available credit: {$availableCredit}", 400);
+                    }
                 }
+                // If credit_limit is null, customer has unlimited credit - no validation needed
             }
 
             // Create Sale
