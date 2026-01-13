@@ -12,13 +12,13 @@ class PermissionSeeder extends Seeder
     /**
      * Run the database seeds.
      * Creates permissions for ACTIVE submodules only.
-     * Each active submodule gets 4 permissions: view, create, update, delete
+     * Each active submodule gets 4 permissions: read, create, update, delete
      */
     public function run(): void
     {
         $this->command->info('Seeding permissions...');
 
-        $actions = ['view', 'create', 'update', 'delete'];
+        $actions = ['read', 'create', 'update', 'delete'];
 
         // Get only active submodules
         $activeSubmodules = Submodule::where('is_active', true)

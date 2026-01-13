@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RevenueStream;
-use App\Models\Business; // 🆕 Add this import
+use App\Models\Business;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -21,15 +21,37 @@ class RevenueStreamController extends Controller
             $perPage = $request->input('per_page', 20);
             $search = $request->input('search');
             $isActive = $request->input('is_active');
-            $businessId = $request->user()->business_id;
+            $branchId = $request->input('branch_id');
+            $user = $request->user();
+            $businessId = $user->business_id;
 
-            $query = RevenueStream::forBusiness($businessId);
+            $query = RevenueStream::with(['branch'])
+                ->forBusiness($businessId);
+
+            // Branch access control: filter by user's accessible branches
+            if (!$user->hasGlobalAccess()) {
+                $accessibleBranchIds = $user->branches()->pluck('branches.id')->toArray();
+                // Include primary branch too
+                if ($user->primary_branch_id) {
+                    $accessibleBranchIds[] = $user->primary_branch_id;
+                }
+                $accessibleBranchIds = array_unique($accessibleBranchIds);
+                // Include streams with null branch_id (global) OR matching accessible branches
+                $query->where(function ($q) use ($accessibleBranchIds) {
+                    $q->whereNull('branch_id')
+                        ->orWhereIn('branch_id', $accessibleBranchIds);
+                });
+            }
+
+            // Additional branch filter from request
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
 
             // Search filter
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('code', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%");
                 });
             }
@@ -63,10 +85,10 @@ class RevenueStreamController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'branch_id' => 'required|exists:branches,id',
             'name' => 'required|string|max:255',
-            'code' => 'required|string|unique:revenue_streams,code',
             'description' => 'nullable|string',
-            'default_currency' => 'sometimes|string|size:3',
+            'default_currency_id' => 'nullable|exists:currencies,id',
             'requires_approval' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -78,10 +100,10 @@ class RevenueStreamController extends Controller
         try {
             $businessId = $request->user()->business_id;
 
-            // 🆕 Get business with base currency
+            // Get business with base currency
             $business = Business::with('baseCurrency')->findOrFail($businessId);
 
-            // 🆕 Check if business has a base currency configured
+            // Check if business has a base currency configured
             if (!$business->base_currency_id) {
                 return errorResponse('Business does not have a base currency configured. Please contact administrator.', 400);
             }
@@ -90,16 +112,17 @@ class RevenueStreamController extends Controller
 
             $streamData = [
                 'business_id' => $businessId,
+                'branch_id' => $request->branch_id,
                 'name' => $request->name,
-                'code' => strtolower($request->code),
                 'description' => $request->description,
-                // 🆕 Use business base currency if not provided
-                'default_currency' => $request->input('default_currency', $business->baseCurrency->code),
+                // Use provided currency or business base currency
+                'default_currency_id' => $request->input('default_currency_id', $business->base_currency_id),
                 'requires_approval' => $request->input('requires_approval', false),
                 'is_active' => $request->input('is_active', true),
             ];
 
             $stream = RevenueStream::create($streamData);
+            $stream->load(['branch']);
 
             DB::commit();
 
@@ -131,6 +154,7 @@ class RevenueStreamController extends Controller
                 return errorResponse('Unauthorized access to this revenue stream', 403);
             }
 
+            $revenueStream->load(['branch']);
             $streamData = $this->transformRevenueStream($revenueStream);
 
             // Add additional stats
@@ -159,10 +183,10 @@ class RevenueStreamController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'branch_id' => 'sometimes|exists:branches,id',
             'name' => 'sometimes|string|max:255',
-            'code' => 'sometimes|string|unique:revenue_streams,code,' . $revenueStream->id,
             'description' => 'nullable|string',
-            'default_currency' => 'sometimes|string|size:3',
+            'default_currency_id' => 'sometimes|exists:currencies,id',
             'requires_approval' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -175,22 +199,18 @@ class RevenueStreamController extends Controller
             DB::beginTransaction();
 
             $updateData = collect($request->only([
+                'branch_id',
                 'name',
-                'code',
                 'description',
-                'default_currency',
+                'default_currency_id',
                 'requires_approval',
                 'is_active'
             ]))->filter(function ($value, $key) {
                 return !is_null($value) || in_array($key, ['description']);
             })->toArray();
 
-            // Ensure code is lowercase
-            if (isset($updateData['code'])) {
-                $updateData['code'] = strtolower($updateData['code']);
-            }
-
             $revenueStream->update($updateData);
+            $revenueStream->load(['branch']);
 
             DB::commit();
 
@@ -261,6 +281,7 @@ class RevenueStreamController extends Controller
 
             $newStatus = !$revenueStream->is_active;
             $revenueStream->update(['is_active' => $newStatus]);
+            $revenueStream->load(['branch']);
 
             DB::commit();
 
@@ -287,10 +308,13 @@ class RevenueStreamController extends Controller
         return [
             'id' => $stream->id,
             'business_id' => $stream->business_id,
+            'branch_id' => $stream->branch_id,
+            'branch' => $stream->branch ? [
+                'id' => $stream->branch->id,
+                'name' => $stream->branch->name,
+            ] : null,
             'name' => $stream->name,
-            'code' => $stream->code,
             'description' => $stream->description,
-            'default_currency' => $stream->default_currency,
             'requires_approval' => $stream->requires_approval,
             'is_active' => $stream->is_active,
             'created_at' => $stream->created_at->format('Y-m-d H:i:s'),

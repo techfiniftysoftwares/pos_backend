@@ -384,11 +384,23 @@ Route::middleware(['auth:api'])->group(function () {
     // Revenue Streams Routes
     Route::prefix('revenue-streams')->group(function () {
         Route::get('/', [RevenueStreamController::class, 'index']);
-        Route::post('/', [RevenueStreamController::class, 'store']);
+        Route::post('/', [RevenueStreamController::class, 'store'])->middleware('branch.access');
         Route::get('/{revenueStream}', [RevenueStreamController::class, 'show']);
-        Route::put('/{revenueStream}', [RevenueStreamController::class, 'update']);
+        Route::put('/{revenueStream}', [RevenueStreamController::class, 'update'])->middleware('branch.access');
         Route::delete('/{revenueStream}', [RevenueStreamController::class, 'destroy']);
         Route::patch('/{revenueStream}/toggle-status', [RevenueStreamController::class, 'toggleStatus']);
+    });
+
+    // Revenue Entries Routes
+    Route::prefix('revenue-entries')->group(function () {
+        Route::get('/', [RevenueEntryController::class, 'index']);
+        Route::post('/', [RevenueEntryController::class, 'store'])->middleware('branch.access');
+        Route::get('/summary', [RevenueEntryController::class, 'summary']);
+        Route::get('/{revenueEntry}', [RevenueEntryController::class, 'show']);
+        Route::put('/{revenueEntry}', [RevenueEntryController::class, 'update'])->middleware('branch.access');
+        Route::delete('/{revenueEntry}', [RevenueEntryController::class, 'destroy']);
+        Route::post('/{revenueEntry}/approve', [RevenueEntryController::class, 'approve']);
+        Route::post('/{revenueEntry}/reject', [RevenueEntryController::class, 'reject']);
     });
 
 

@@ -12,10 +12,9 @@ class RevenueStream extends Model
 
     protected $fillable = [
         'business_id',
+        'branch_id',
         'name',
-        'code',
         'description',
-        'default_currency',
         'requires_approval',
         'is_active',
     ];
@@ -31,6 +30,11 @@ class RevenueStream extends Model
     public function business()
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function revenueEntries()
@@ -49,5 +53,10 @@ class RevenueStream extends Model
     public function scopeForBusiness($query, $businessId)
     {
         return $query->where('business_id', $businessId);
+    }
+
+    public function scopeForBranch($query, $branchId)
+    {
+        return $query->where('branch_id', $branchId);
     }
 }
