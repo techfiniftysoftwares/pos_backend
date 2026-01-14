@@ -17,6 +17,8 @@ use App\Models\Payment;
 use App\Models\Currency;
 use App\Models\Customer;
 use App\Models\CustomerCreditTransaction;
+use App\Models\LoyaltyProgramSetting;
+use App\Models\CustomerPoint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -647,6 +649,35 @@ class SaleController extends Controller
                 }
             }
 
+            // Award loyalty points to customer (based on AMOUNT PAID for consistency)
+            $pointsEarned = 0;
+            if ($sale->customer_id && $totalPaidInitial > 0) {
+                $loyaltySettings = LoyaltyProgramSetting::where('business_id', $request->business_id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($loyaltySettings) {
+                    // Award points based on amount actually paid (supports partial payments)
+                    // Convert paid amount to base currency for consistent point calculation
+                    $paidInBaseCurrency = $totalPaidInitial * $request->sale_to_base_exchange_rate;
+                    $pointsEarned = $loyaltySettings->calculatePointsEarned($paidInBaseCurrency);
+
+                    if ($pointsEarned > 0) {
+                        CustomerPoint::create([
+                            'customer_id' => $sale->customer_id,
+                            'transaction_type' => 'earned',
+                            'points' => $pointsEarned,
+                            'reference_type' => 'App\\Models\\Sale',
+                            'reference_id' => $sale->id,
+                            'expires_at' => $loyaltySettings->getPointExpirationDate(),
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $request->branch_id,
+                            'notes' => "Points earned from sale: {$sale->sale_number} (paid: " . round($paidInBaseCurrency, 2) . ")",
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             $sale->load([
@@ -660,7 +691,10 @@ class SaleController extends Controller
                 'salePayments.currency'
             ]);
 
-            return successResponse('Sale completed successfully', $sale, 201);
+            return successResponse('Sale completed successfully', [
+                'sale' => $sale,
+                'points_earned' => $pointsEarned,
+            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create sale', [

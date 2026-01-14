@@ -48,6 +48,7 @@ use App\Http\Controllers\Api\CustomerCreditPdfReportController;
 use App\Http\Controllers\Api\PaymentPdfReportController;
 use App\Http\Controllers\Api\RevenueStreamPdfReportController;
 use App\Http\Controllers\Api\InventoryStockPdfReportController;
+use App\Http\Controllers\Api\LoyaltySettingsController;
 
 
 
@@ -410,6 +411,13 @@ Route::middleware(['auth:api'])->group(function () {
         Route::post('/', [TaxController::class, 'store']);
         Route::put('/{tax}', [TaxController::class, 'update']);
         Route::delete('/{tax}', [TaxController::class, 'destroy']);
+    });
+
+    // Loyalty Program Settings routes
+    Route::prefix('loyalty-settings')->group(function () {
+        Route::get('/', [LoyaltySettingsController::class, 'show']);
+        Route::post('/', [LoyaltySettingsController::class, 'store']);
+        Route::put('/{loyaltyProgramSetting}', [LoyaltySettingsController::class, 'update']);
     });
 
     Route::get('/admin-dashboard/system-overview', [AdminDashboardController::class, 'getSystemOverview']);
