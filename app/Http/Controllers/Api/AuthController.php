@@ -31,7 +31,7 @@ class AuthController extends Controller
         $field = filter_var($request->identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
         $user = User::where($field, $request->identifier)
-            ->with(['business', 'primaryBranch', 'branches', 'branchRoles'])
+            ->with(['business.baseCurrency', 'primaryBranch', 'branches', 'branchRoles'])
             ->first();
 
         if (!$user) {
@@ -71,7 +71,11 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'employee_id' => $user->employee_id,
                     'role' => $primaryRole,
-                    'business' => $user->business->only(['id', 'name']),
+                    'business' => $user->business ? [
+                        'id' => $user->business->id,
+                        'name' => $user->business->name,
+                        'currency' => $user->business->baseCurrency ? $user->business->baseCurrency->only(['id', 'code', 'symbol', 'name']) : null,
+                    ] : null,
                     'primary_branch' => $user->primaryBranch?->only(['id', 'name', 'code']),
                     'accessible_branches' => $user->branches->map(function ($branch) use ($user) {
                         $branchRole = $user->getRoleForBranch($branch->id);
@@ -138,7 +142,7 @@ class AuthController extends Controller
             $user->save();
 
             // Load relationships
-            $user = $user->fresh(['role', 'business', 'primaryBranch']);
+            $user = $user->fresh(['role', 'business.baseCurrency', 'primaryBranch']);
 
             // Send account created notification
             SendUserAccountCreatedNotification::dispatch($user, $password, $authUser);
@@ -152,7 +156,11 @@ class AuthController extends Controller
                         'email' => $user->email,
                         'employee_id' => $user->employee_id,
                         'role' => $user->role->only(['id', 'name']),
-                        'business' => $user->business->only(['id', 'name']),
+                        'business' => $user->business ? [
+                            'id' => $user->business->id,
+                            'name' => $user->business->name,
+                            'currency' => $user->business->baseCurrency ? $user->business->baseCurrency->only(['id', 'code', 'symbol', 'name']) : null,
+                        ] : null,
                         'primary_branch' => $user->primaryBranch->only(['id', 'name', 'code'])
                     ]
                 ],

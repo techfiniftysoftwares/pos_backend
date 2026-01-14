@@ -8,7 +8,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('purchase_items', function (Blueprint $table) {
-            $table->foreignId('tax_id')->nullable()->after('unit_cost')->constrained('taxes')->nullOnDelete();
+            if (!Schema::hasColumn('purchase_items', 'tax_id')) {
+                $table->foreignId('tax_id')->nullable()->after('unit_cost')->constrained('taxes')->nullOnDelete();
+            }
         });
     }
 

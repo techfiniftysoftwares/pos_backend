@@ -35,17 +35,21 @@ class Sale extends Model
         'notes',
         'metadata',
         'completed_at',
+        'loyalty_points_used',
+        'loyalty_points_discount',
     ];
 
     protected $casts = [
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'loyalty_points_discount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'change_amount' => 'decimal:2',
         'exchange_rate' => 'decimal:10',  // ✅ Changed from decimal:4 to decimal:10
         'total_in_base_currency' => 'decimal:2',
         'is_credit_sale' => 'boolean',
+        'loyalty_points_used' => 'integer',
         'credit_due_date' => 'date',
         'completed_at' => 'datetime',
         'metadata' => 'array',

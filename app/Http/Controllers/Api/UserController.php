@@ -583,7 +583,7 @@ class UserController extends Controller
     public function getProfile(Request $request)
     {
         try {
-            $user = $request->user()->load(['business', 'primaryBranch', 'branches']);
+            $user = $request->user()->load(['business.baseCurrency', 'primaryBranch', 'branches']);
 
             // Get role for primary branch
             $primaryRole = $user->getPrimaryRole();
@@ -598,13 +598,13 @@ class UserController extends Controller
                     ->where('modules.is_active', 1)
                     ->where('submodules.is_active', 1)
                     ->select([
-                        'permissions.id',
-                        'permissions.module_id',
-                        'permissions.submodule_id',
-                        'permissions.action',
-                        'modules.name as module_name',
-                        'submodules.title as submodule_title'
-                    ])
+                            'permissions.id',
+                            'permissions.module_id',
+                            'permissions.submodule_id',
+                            'permissions.action',
+                            'modules.name as module_name',
+                            'submodules.title as submodule_title'
+                        ])
                     ->get();
 
                 // Transform to the expected format
@@ -626,7 +626,11 @@ class UserController extends Controller
                     'is_active' => $user->is_active,
                     'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
                     'role' => $primaryRole ? $primaryRole->only(['id', 'name']) : null,
-                    'business' => $user->business ? $user->business->only(['id', 'name']) : null,
+                    'business' => $user->business ? [
+                        'id' => $user->business->id,
+                        'name' => $user->business->name,
+                        'currency' => $user->business->baseCurrency ? $user->business->baseCurrency->only(['id', 'code', 'symbol', 'name']) : null,
+                    ] : null,
                     'primary_branch' => $user->primaryBranch ? [
                         'id' => $user->primaryBranch->id,
                         'name' => $user->primaryBranch->name,
@@ -656,7 +660,11 @@ class UserController extends Controller
                 'is_active' => $user->is_active,
                 'last_login_at' => $user->last_login_at ? $user->last_login_at->format('Y-m-d H:i:s') : null,
                 'role' => null,
-                'business' => $user->business ? $user->business->only(['id', 'name']) : null,
+                'business' => $user->business ? [
+                    'id' => $user->business->id,
+                    'name' => $user->business->name,
+                    'currency' => $user->business->baseCurrency ? $user->business->baseCurrency->only(['id', 'code', 'symbol', 'name']) : null,
+                ] : null,
                 'primary_branch' => $user->primaryBranch ? [
                     'id' => $user->primaryBranch->id,
                     'name' => $user->primaryBranch->name,

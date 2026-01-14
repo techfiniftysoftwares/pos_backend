@@ -255,6 +255,8 @@ class SaleController extends Controller
             'payments.*.exchange_rate' => 'required_with:payments|numeric|min:0.0001',
             'payments.*.transaction_id' => 'nullable|string',
             'notes' => 'nullable|string',
+            'loyalty_points_used' => 'nullable|integer|min:0',
+            'loyalty_points_discount' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -373,9 +375,13 @@ class SaleController extends Controller
                 }
 
                 // Allow change (overpayment), but block underpayment
-                if ($totalPaidInSaleCurrency < ($grandTotal - 0.01)) {
+                // 🆕 Account for loyalty discount
+                $loyaltyDiscount = $request->loyalty_points_discount ?? 0;
+                $expectedPayment = $grandTotal - $loyaltyDiscount;
+
+                if ($totalPaidInSaleCurrency < ($expectedPayment - 0.01)) {
                     return errorResponse(
-                        "Payment mismatch. Expected: " . round($grandTotal, 2) . " {$saleCurrency->code}, Received: " . round($totalPaidInSaleCurrency, 2) . " {$saleCurrency->code}",
+                        "Payment mismatch. Expected: " . round($expectedPayment, 2) . " {$saleCurrency->code}, Received: " . round($totalPaidInSaleCurrency, 2) . " {$saleCurrency->code}",
                         400
                     );
                 }
@@ -388,7 +394,7 @@ class SaleController extends Controller
                     $totalPaidInSaleCurrency += $payment['amount'] * $payment['exchange_rate'];
                 }
             }
-            $changeAmount = max(0, $totalPaidInSaleCurrency - $grandTotal);
+            $changeAmount = max(0, $totalPaidInSaleCurrency - ($grandTotal - ($request->loyalty_points_discount ?? 0)));
 
             // Credit sale validation
             if ($request->payment_type === 'credit') {
@@ -409,6 +415,28 @@ class SaleController extends Controller
                 // If credit_limit is null, customer has unlimited credit - no validation needed
             }
 
+
+            // Determine Real Payment Status & Credit Status
+            $loyaltyDiscount = $request->loyalty_points_discount ?? 0;
+            $remainingDue = $grandTotal - $loyaltyDiscount - $totalPaidInSaleCurrency;
+            $isFullyPaid = $remainingDue <= 0.01;
+
+            $finalPaymentStatus = $request->payment_type === 'credit' ? 'unpaid' : 'paid';
+            if ($isFullyPaid) {
+                $finalPaymentStatus = 'paid';
+            } elseif (($totalPaidInSaleCurrency > 0 || $loyaltyDiscount > 0) && $request->payment_type === 'credit') {
+                $finalPaymentStatus = 'partial';
+            }
+
+            // A sale is only a "credit sale" if there is an unpaid balance AND the user selected credit
+            $finalIsCreditSale = ($request->payment_type === 'credit' && !$isFullyPaid);
+
+            // If fully paid but type was credit (e.g. loyalty covered it), switch to 'mixed'
+            $finalPaymentType = $request->payment_type;
+            if ($isFullyPaid && $finalPaymentType === 'credit') {
+                $finalPaymentType = 'mixed';
+            }
+
             // Create Sale
             $sale = Sale::create([
                 'business_id' => $request->business_id,
@@ -425,19 +453,22 @@ class SaleController extends Controller
                 'exchange_rate' => $request->sale_to_base_exchange_rate,
                 'total_in_base_currency' => round($request->total_in_base_currency, 2),
                 'status' => 'completed',
-                'payment_type' => $request->payment_type,
-                'payment_status' => $request->payment_type === 'credit' ? 'unpaid' : 'paid',
-                'is_credit_sale' => $request->payment_type === 'credit',
+                'payment_type' => $finalPaymentType,
+                'payment_status' => $finalPaymentStatus,
+                'is_credit_sale' => $finalIsCreditSale,
                 'notes' => $request->notes,
+                'loyalty_points_used' => $request->loyalty_points_used ?? 0,
+                'loyalty_points_discount' => $request->loyalty_points_discount ?? 0,
                 'completed_at' => now(),
             ]);
 
             // Create credit transaction for credit sales (record the debt)
-            if ($request->payment_type === 'credit') {
+            // Only create if there is actual remaining debt
+            if ($finalIsCreditSale && $remainingDue > 0) {
                 CustomerCreditTransaction::create([
                     'customer_id' => $request->customer_id,
                     'transaction_type' => 'sale',
-                    'amount' => round($grandTotal, 2),
+                    'amount' => round($remainingDue, 2),
                     'reference_number' => $sale->sale_number,
                     'processed_by' => Auth::id(),
                     'branch_id' => $request->branch_id,
@@ -658,9 +689,29 @@ class SaleController extends Controller
 
                 if ($loyaltySettings) {
                     // Award points based on amount actually paid (supports partial payments)
-                    // Convert paid amount to base currency for consistent point calculation
-                    $paidInBaseCurrency = $totalPaidInitial * $request->sale_to_base_exchange_rate;
-                    $pointsEarned = $loyaltySettings->calculatePointsEarned($paidInBaseCurrency);
+                    // BUT skip if points were redeemed/used in this sale (no double dipping)
+                    $pointsRedeemed = $request->loyalty_points_used ?? 0;
+                    if ($pointsRedeemed > 0) {
+                        $pointsEarned = 0; // No points earned on redemption transactions
+
+                        // Deduct redeemed points
+                        CustomerPoint::create([
+                            'customer_id' => $sale->customer_id,
+                            'transaction_type' => 'redeemed',
+                            'points' => -$pointsRedeemed, // Negative for deduction
+                            'reference_type' => 'App\\Models\\Sale',
+                            'reference_id' => $sale->id,
+                            'expires_at' => null, // Redemption has no expiry
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $request->branch_id,
+                            'notes' => "Points redeemed for sale: {$sale->sale_number} (Discount: " . round($request->loyalty_points_discount, 2) . " {$saleCurrency->code})",
+                        ]);
+
+                    } else {
+                        // Convert paid amount to base currency for consistent point calculation
+                        $paidInBaseCurrency = $totalPaidInitial * $request->sale_to_base_exchange_rate;
+                        $pointsEarned = $loyaltySettings->calculatePointsEarned($paidInBaseCurrency);
+                    }
 
                     if ($pointsEarned > 0) {
                         CustomerPoint::create([
