@@ -77,6 +77,12 @@ class SubmoduleSeeder extends Seeder
                 ['title' => 'Payment Reports', 'path' => 'payments/reports', 'is_active' => false],
             ],
 
+            // Revenue
+            'Revenue' => [
+                ['title' => 'Revenue Streams', 'path' => 'revenue/streams', 'is_active' => true],
+                ['title' => 'Revenue Entries', 'path' => 'revenue/entries', 'is_active' => true],
+            ],
+
             // Reports & Analytics
             'Reports & Analytics' => [
                 ['title' => 'Sales Reports', 'path' => 'reports/sales', 'is_active' => true],

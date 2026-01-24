@@ -22,6 +22,7 @@ class ModuleSeeder extends Seeder
             ['name' => 'Procurement', 'is_active' => true],
             ['name' => 'Customers', 'is_active' => true],
             ['name' => 'Payments', 'is_active' => true],
+            ['name' => 'Revenue', 'is_active' => true],
             ['name' => 'Reports & Analytics', 'is_active' => true],
             ['name' => 'User Management', 'is_active' => true],
             ['name' => 'Settings', 'is_active' => true],
