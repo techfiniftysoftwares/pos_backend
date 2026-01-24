@@ -62,10 +62,6 @@ return new class extends Migration {
             // Ensure unique role-permission combination
             $table->unique(['role_id', 'permission_id']);
         });
-
-
-        // Seed the data
-        $this->seedData();
     }
 
     /**
