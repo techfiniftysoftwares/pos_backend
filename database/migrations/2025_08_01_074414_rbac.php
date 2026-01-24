@@ -5,8 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -217,7 +216,7 @@ return new class extends Migration
 
             // 6. Update existing users to have admin role (optional - you might want to do this manually)
             // Uncomment the next line if you want all existing users to become admins initially
-            DB::table('users')->update(['role_id' => 1]);
+            // DB::table('users')->update(['role_id' => 1]);
         });
     }
 };
