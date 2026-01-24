@@ -73,9 +73,6 @@ return new class extends Migration {
         Schema::dropIfExists('permissions');
         Schema::dropIfExists('submodules');
         Schema::dropIfExists('modules');
-
-        // Only drop roles if it was created by this migration
-        // Comment out the next line if roles table existed before
         Schema::dropIfExists('roles');
 
 

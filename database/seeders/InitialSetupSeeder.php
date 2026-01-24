@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Business;
 use App\Models\Branch;
 use App\Models\Role;
+use App\Models\Currency;
 
 class InitialSetupSeeder extends Seeder
 {
@@ -30,7 +31,20 @@ class InitialSetupSeeder extends Seeder
             ]);
             $this->command->info('✓ Super Admin role created (Global)');
 
-            // 2. Create Business
+            // 2. Create Base Currency
+            $this->command->info('Creating base currency...');
+            $currency = Currency::firstOrCreate(
+                ['code' => 'KES'],
+                [
+                    'name' => 'Kenyan Shilling',
+                    'symbol' => 'KSh',
+                    'is_base' => true,
+                    'is_active' => true,
+                ]
+            );
+            $this->command->info('✓ Base currency created: ' . $currency->code);
+
+            // 3. Create Business
             $this->command->info('Creating business...');
             $business = Business::create([
                 'name' => 'Sample Business',
@@ -38,6 +52,7 @@ class InitialSetupSeeder extends Seeder
                 'phone' => '+254700000000',
                 'address' => 'Nairobi, Kenya',
                 'status' => 'active',
+                'base_currency_id' => $currency->id,
             ]);
             $this->command->info('✓ Business created: ' . $business->name);
 
@@ -59,8 +74,8 @@ class InitialSetupSeeder extends Seeder
             $user = User::create([
                 'business_id' => $business->id,
                 'primary_branch_id' => $branch->id,
-                'name' => 'John Doe',
-                'email' => 'johndoe@mail.com',
+                'name' => 'Admin User',
+                'email' => 'admin@mail.com',
                 'phone' => '+254700000000',
                 'password' => Hash::make('password123'),
                 'pin' => '1234',
