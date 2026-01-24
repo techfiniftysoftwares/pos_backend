@@ -7,14 +7,13 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Role;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-         Schema::create('users', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -70,91 +69,9 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
-
-         $this->seedUsers();
     }
 
 
-     private function seedUsers()
-    {
-        // Get role IDs
-        $adminRoleId = Role::where('name', 'admin')->first()->id;
-        $managerRoleId = Role::where('name', 'support_manager')->first()->id;
-        $agentRoleId = Role::where('name', 'support_agent')->first()->id;
-        $technicianRoleId = Role::where('name', 'technician')->first()->id;
-
-        $users = [
-            [
-                'name' => 'System Administrator',
-                'email' => 'admin@company.com',
-                'password' => Hash::make('password123'),
-                'phone' => '+254700000000',
-                'employee_id' => 'EMP0001',
-                'role_id' => $adminRoleId,
-                'department' => 'IT',
-                'specialization' => 'System Administration',
-                'is_available' => true,
-                'availability_status' => 'available',
-                'email_verified_at' => now(),
-            ],
-            [
-                'name' => 'Support Manager',
-                'email' => 'manager@company.com',
-                'password' => Hash::make('password123'),
-                'phone' => '+254700000001',
-                'employee_id' => 'EMP0002',
-                'role_id' => $managerRoleId,
-                'department' => 'Customer Service',
-                'specialization' => 'Support Management',
-                'is_available' => true,
-                'availability_status' => 'available',
-                'email_verified_at' => now(),
-            ],
-            [
-                'name' => 'John Kimani',
-                'email' => 'john.kimani@company.com',
-                'password' => Hash::make('password123'),
-                'phone' => '+254700000002',
-                'employee_id' => 'EMP0003',
-                'role_id' => $agentRoleId,
-                'department' => 'Customer Service',
-                'specialization' => 'POS Systems',
-                'is_available' => true,
-                'availability_status' => 'available',
-                'email_verified_at' => now(),
-            ],
-            [
-                'name' => 'Mary Wanjiku',
-                'email' => 'mary.wanjiku@company.com',
-                'password' => Hash::make('password123'),
-                'phone' => '+254700000003',
-                'employee_id' => 'EMP0004',
-                'role_id' => $agentRoleId,
-                'department' => 'Customer Service',
-                'specialization' => 'ERP Systems',
-                'is_available' => true,
-                'availability_status' => 'available',
-                'email_verified_at' => now(),
-            ],
-            [
-                'name' => 'Peter Mwangi',
-                'email' => 'peter.mwangi@company.com',
-                'password' => Hash::make('password123'),
-                'phone' => '+254700000004',
-                'employee_id' => 'EMP0005',
-                'role_id' => $technicianRoleId,
-                'department' => 'Technical Support',
-                'specialization' => 'Facility Management',
-                'is_available' => true,
-                'availability_status' => 'available',
-                'email_verified_at' => now(),
-            ],
-        ];
-
-        foreach ($users as $userData) {
-            User::create($userData);
-        }
-    }
 
     /**
      * Reverse the migrations.
