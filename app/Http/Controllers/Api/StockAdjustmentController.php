@@ -407,15 +407,15 @@ class StockAdjustmentController extends Controller
     {
         return [
             'id' => $adjustment->id,
-            'product' => [
+            'product' => $adjustment->product ? [
                 'id' => $adjustment->product->id,
                 'name' => $adjustment->product->name,
                 'sku' => $adjustment->product->sku,
-            ],
-            'branch' => [
+            ] : null,
+            'branch' => $adjustment->branch ? [
                 'id' => $adjustment->branch->id,
                 'name' => $adjustment->branch->name,
-            ],
+            ] : null,
             'adjustment_type' => $adjustment->adjustment_type,
             'quantity_adjusted' => (float) $adjustment->quantity_adjusted,
             'before_quantity' => (float) $adjustment->before_quantity,
@@ -423,10 +423,10 @@ class StockAdjustmentController extends Controller
             'reason' => $adjustment->reason,
             'cost_impact' => (float) $adjustment->cost_impact,
             'notes' => $adjustment->notes,
-            'adjusted_by' => [
+            'adjusted_by' => $adjustment->adjustedBy ? [
                 'id' => $adjustment->adjustedBy->id,
                 'name' => $adjustment->adjustedBy->name,
-            ],
+            ] : null,
             'approved_by' => $adjustment->approvedBy ? [
                 'id' => $adjustment->approvedBy->id,
                 'name' => $adjustment->approvedBy->name,

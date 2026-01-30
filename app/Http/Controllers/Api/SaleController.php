@@ -784,7 +784,7 @@ class SaleController extends Controller
     }
 
     /**
-     * Cancel pending sale
+     * Cancel sale with full reversals
      */
     public function cancel(Request $request, Sale $sale)
     {
@@ -798,12 +798,12 @@ class SaleController extends Controller
 
         try {
             if (!$sale->canBeCancelled()) {
-                return errorResponse('Only pending sales can be cancelled', 400);
+                return errorResponse('This sale has already been cancelled', 400);
             }
 
             DB::beginTransaction();
 
-            // Restore stock for all items
+            // ========== 1. RESTORE STOCK FOR ALL ITEMS ==========
             foreach ($sale->items as $item) {
                 $stock = Stock::where('product_id', $item->product_id)
                     ->where('branch_id', $sale->branch_id)
@@ -817,17 +817,17 @@ class SaleController extends Controller
 
                     $stock->update(['quantity' => $newQuantity]);
 
-                    // Create Stock Movement
+                    // Create Stock Movement for the reversal
                     StockMovement::create([
                         'business_id' => $sale->business_id,
                         'branch_id' => $sale->branch_id,
                         'product_id' => $item->product_id,
                         'user_id' => Auth::id(),
-                        'movement_type' => 'adjustment',
+                        'movement_type' => 'cancellation',
                         'quantity' => $item->quantity,
                         'previous_quantity' => $previousQuantity,
                         'new_quantity' => $newQuantity,
-                        'unit_cost' => $stock->unit_cost,
+                        'unit_cost' => $item->unit_cost ?? $stock->unit_cost,
                         'reference_type' => 'App\Models\Sale',
                         'reference_id' => $sale->id,
                         'notes' => "Sale cancelled: {$sale->sale_number}. Reason: {$request->reason}",
@@ -835,19 +835,101 @@ class SaleController extends Controller
                 }
             }
 
+            // ========== 2. REVERSE PAYMENT RECORDS ==========
+            $salePayments = $sale->salePayments()->with('payment')->get();
+            foreach ($salePayments as $salePayment) {
+                if ($salePayment->payment) {
+                    // Mark payment as refunded
+                    $salePayment->payment->update([
+                        'status' => 'refunded',
+                        'notes' => ($salePayment->payment->notes ?? '') . "\nRefunded due to sale cancellation: {$sale->sale_number}",
+                    ]);
+                }
+            }
+
+            // ========== 3. REVERSE CUSTOMER CREDIT TRANSACTIONS (for credit sales) ==========
+            if ($sale->is_credit_sale && $sale->customer_id) {
+                // Find and reverse credit transactions related to this sale
+                $creditTransactions = CustomerCreditTransaction::where('reference_number', $sale->sale_number)
+                    ->where('customer_id', $sale->customer_id)
+                    ->get();
+
+                foreach ($creditTransactions as $creditTx) {
+                    // Create an offsetting transaction
+                    $offsetAmount = $creditTx->transaction_type === 'sale'
+                        ? -$creditTx->amount  // Reduce debt (negative adjustment)
+                        : $creditTx->amount;   // Restore debt if it was a payment
+
+                    CustomerCreditTransaction::create([
+                        'customer_id' => $sale->customer_id,
+                        'transaction_type' => 'adjustment',
+                        'amount' => $offsetAmount,
+                        'reference_number' => $sale->sale_number,
+                        'processed_by' => Auth::id(),
+                        'branch_id' => $sale->branch_id,
+                        'notes' => "Reversal due to sale cancellation: {$sale->sale_number}. Reason: {$request->reason}",
+                    ]);
+                }
+            }
+
+            // ========== 4. REVERSE LOYALTY POINTS ==========
+            if ($sale->customer_id) {
+                // Find all point transactions related to this sale
+                $pointTransactions = CustomerPoint::where('reference_type', 'App\Models\Sale')
+                    ->where('reference_id', $sale->id)
+                    ->where('customer_id', $sale->customer_id)
+                    ->get();
+
+                foreach ($pointTransactions as $pointTx) {
+                    if ($pointTx->transaction_type === 'earned' && $pointTx->points > 0) {
+                        // Reverse earned points - create negative cancellation entry
+                        CustomerPoint::create([
+                            'customer_id' => $sale->customer_id,
+                            'transaction_type' => 'cancelled',
+                            'points' => -$pointTx->points, // Negative to deduct
+                            'reference_type' => 'App\Models\Sale',
+                            'reference_id' => $sale->id,
+                            'expires_at' => null,
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $sale->branch_id,
+                            'notes' => "Points reversed due to sale cancellation: {$sale->sale_number}",
+                        ]);
+                    } elseif ($pointTx->transaction_type === 'redeemed' && $pointTx->points < 0) {
+                        // Restore redeemed points - create positive restoration entry
+                        CustomerPoint::create([
+                            'customer_id' => $sale->customer_id,
+                            'transaction_type' => 'restored',
+                            'points' => abs($pointTx->points), // Positive to restore
+                            'reference_type' => 'App\Models\Sale',
+                            'reference_id' => $sale->id,
+                            'expires_at' => null, // Restored points don't expire
+                            'processed_by' => Auth::id(),
+                            'branch_id' => $sale->branch_id,
+                            'notes' => "Points restored due to sale cancellation: {$sale->sale_number}",
+                        ]);
+                    }
+                }
+            }
+
+            // ========== 5. UPDATE SALE STATUS ==========
             $sale->update([
                 'status' => 'cancelled',
-                'notes' => ($sale->notes ?? '') . "\nCancelled: {$request->reason}",
+                'cancel_reason' => $request->reason,
+                'notes' => ($sale->notes ?? '') . "\nCancelled by " . Auth::user()->name . " on " . now()->format('Y-m-d H:i:s') . ": {$request->reason}",
             ]);
 
             DB::commit();
 
-            return successResponse('Sale cancelled successfully', $sale);
+            // Reload sale with relationships
+            $sale->load(['items.product', 'customer', 'salePayments.payment']);
+
+            return successResponse('Sale cancelled successfully. All transactions have been reversed.', $sale);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to cancel sale', [
                 'sale_id' => $sale->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return serverErrorResponse('Failed to cancel sale', $e->getMessage());
         }

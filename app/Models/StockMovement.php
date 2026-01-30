@@ -82,7 +82,7 @@ class StockMovement extends Model
 
     public function scopeStockIn($query)
     {
-        return $query->whereIn('movement_type', ['purchase', 'transfer_in', 'return_in', 'adjustment'])
+        return $query->whereIn('movement_type', ['purchase', 'transfer_in', 'return_in', 'adjustment', 'cancellation'])
             ->where('quantity', '>', 0);
     }
 

@@ -33,6 +33,7 @@ class Sale extends Model
         'is_credit_sale',
         'credit_due_date',
         'notes',
+        'cancel_reason',
         'metadata',
         'completed_at',
         'loyalty_points_used',
@@ -195,7 +196,7 @@ class Sale extends Model
 
     public function canBeCancelled()
     {
-        return $this->isPending();
+        return $this->status !== 'cancelled';
     }
 
     // Boot method
