@@ -25,6 +25,8 @@ class Product extends Model
         'image',
         'cost_price',
         'selling_price',
+        'wholesale_price',
+        'wholesale_min_quantity',
         'minimum_stock_level',
         'tax_rate', // Deprecated/Fallback
         'tax_inclusive',
@@ -36,6 +38,8 @@ class Product extends Model
     protected $casts = [
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
+        'wholesale_price' => 'decimal:2',
+        'wholesale_min_quantity' => 'integer',
         'tax_rate' => 'decimal:2',
         'tax_inclusive' => 'boolean',
         'track_inventory' => 'boolean',
@@ -151,6 +155,26 @@ class Product extends Model
     public function getPriceWithTaxAttribute()
     {
         return $this->selling_price * (1 + ($this->tax_rate / 100));
+    }
+
+    /**
+     * Get the appropriate price based on quantity.
+     * Returns wholesale_price if quantity meets threshold, otherwise selling_price.
+     *
+     * @param int $quantity The quantity being purchased
+     * @return float The applicable price
+     */
+    public function getPriceForQuantity($quantity, $applyWholesale = true)
+    {
+        $wholesalePrice = $this->wholesale_price;
+        $minQty = $this->wholesale_min_quantity;
+
+        // Check for wholesale eligibility AND if it's enabled
+        if ($applyWholesale && $wholesalePrice && $minQty && $quantity >= $minQty) {
+            return $wholesalePrice;
+        }
+
+        return $this->selling_price;
     }
 
     // Helper Methods

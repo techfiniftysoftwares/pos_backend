@@ -155,6 +155,7 @@ class SaleController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.discount_amount' => 'nullable|numeric|min:0',
+            'items.*.apply_wholesale' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -174,7 +175,9 @@ class SaleController extends Controller
             foreach ($items as $item) {
                 $product = Product::with('tax')->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
-                $unitPrice = $product->selling_price;
+                // Default to true if not present for backward compatibility
+                $applyWholesale = $item['apply_wholesale'] ?? true;
+                $unitPrice = $product->getPriceForQuantity($quantity, $applyWholesale);
                 $itemDiscount = $item['discount_amount'] ?? 0;
 
                 $baseLineTotal = ($unitPrice * $quantity) - $itemDiscount;
@@ -318,8 +321,10 @@ class SaleController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::with(['currency', 'tax'])->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
-                $unitPrice = $product->selling_price; // In product currency
-
+                // Default to true if not present for backward compatibility
+                $applyWholesale = $item['apply_wholesale'] ?? true;
+                $unitPrice = $product->getPriceForQuantity($quantity, $applyWholesale); // In product currency
+                $itemDiscount = $item['discount_amount'] ?? 0;
                 // Determine product currency
                 $productCurrency = $product->currency ?? $baseCurrency;
 
@@ -480,7 +485,9 @@ class SaleController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::with(['currency', 'tax'])->findOrFail($item['product_id']);
                 $quantity = $item['quantity'];
-                $unitPrice = $product->selling_price; // In product currency (base currency)
+                // Default to true if not present for backward compatibility
+                $applyWholesale = $item['apply_wholesale'] ?? true;
+                $unitPrice = $product->getPriceForQuantity($quantity, $applyWholesale); // In product currency (base currency)
 
                 // Determine product currency for THIS item
                 $itemProductCurrency = $product->currency ?? $baseCurrency;
