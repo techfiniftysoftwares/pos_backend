@@ -112,8 +112,8 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'unit_id' => 'required|exists:units,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
-            'sku' => 'nullable|string|max:100|unique:products,sku',
-            'barcode' => 'nullable|string|max:100|unique:products,barcode',
+            'sku' => 'nullable|string|max:100|unique:products,sku,NULL,id,deleted_at,NULL',
+            'barcode' => 'nullable|string|max:100|unique:products,barcode,NULL,id,deleted_at,NULL',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'cost_price' => 'required|numeric|min:0',
@@ -284,8 +284,8 @@ class ProductController extends Controller
             'category_id' => 'sometimes|exists:categories,id',
             'unit_id' => 'sometimes|exists:units,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
-            'sku' => 'sometimes|string|max:100|unique:products,sku,' . $product->id,
-            'barcode' => 'nullable|string|max:100|unique:products,barcode,' . $product->id,
+            'sku' => 'sometimes|string|max:100|unique:products,sku,' . $product->id . ',id,deleted_at,NULL',
+            'barcode' => 'nullable|string|max:100|unique:products,barcode,' . $product->id . ',id,deleted_at,NULL',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'cost_price' => 'sometimes|numeric|min:0',
@@ -436,6 +436,14 @@ class ProductController extends Controller
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
+
+            // Obfuscate unique fields before soft delete to allow reuse of SKU/barcode
+            // This preserves the historical record while freeing up the unique values
+            $deletedSuffix = '_deleted_' . now()->timestamp;
+            $product->update([
+                'sku' => $product->sku . $deletedSuffix,
+                'barcode' => $product->barcode ? $product->barcode . $deletedSuffix : null,
+            ]);
 
             $product->delete();
 
