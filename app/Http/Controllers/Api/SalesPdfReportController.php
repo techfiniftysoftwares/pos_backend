@@ -93,7 +93,27 @@ class SalesPdfReportController extends Controller
         'Filters: All Sales' => 'Filtres: Toutes les Ventes',
         'From' => 'De',
         'transactions' => 'transactions',
-        'Per transaction' => 'Par transaction'
+        'Per transaction' => 'Par transaction',
+        // Shift Report Translations
+        'SHIFT SALES REPORT' => 'RAPPORT DES VENTES DE QUART',
+        'SHIFT SUMMARY' => 'RESUME DU QUART',
+        'PAYMENT METHODS' => 'MODES DE PAIEMENT',
+        'TOP PRODUCTS THIS SHIFT' => 'MEILLEURS PRODUITS DU QUART',
+        'SALES TRANSACTIONS' => 'TRANSACTIONS DE VENTE',
+        'CASHIER' => 'CAISSIER',
+        'No sales transactions during this shift.' => 'Aucune transaction de vente pendant ce quart.',
+        'Sale #' => 'N Vente',
+        'Time' => 'Heure',
+        'Qty' => 'Qte',
+        'Method' => 'Methode',
+        'Count' => 'Nombre',
+        'Product' => 'Produit',
+        // New shift metrics
+        'TOTAL TRANSACTIONS' => 'TOTAL TRANSACTIONS',
+        'EXPENSES' => 'DEPENSES',
+        'CREDIT AMOUNT' => 'MONTANT CREDIT',
+        'SALES TOTAL' => 'TOTAL VENTES',
+        'BALANCE' => 'SOLDE'
     ];
 
     private function translate($key)
@@ -973,4 +993,466 @@ class SalesPdfReportController extends Controller
         $pdf->Cell(0, 4, $this->translate('This is a computer-generated document and requires no signature'), 0, 1, 'C');
     }
 
+    // =====================================================
+    // REPORT 3: SHIFT SALES REPORT
+    // =====================================================
+    // Sales report for a specific shift (time period) and cashier
+
+    /**
+     * Generate shift sales report - for cashiers to see their shift sales
+     */
+    public function generateShiftSalesReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'shift_date' => 'required|date',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
+                'cashier_id' => 'nullable|exists:users,id',
+                'branch_id' => 'nullable|exists:branches,id',
+                'business_id' => 'nullable|exists:businesses,id',
+                'currency_code' => 'nullable|string|size:3',
+            ]);
+
+            if ($validator->fails()) {
+                return validationErrorResponse($validator->errors());
+            }
+
+            $reportData = $this->getShiftSalesReportData($request);
+            return $this->generateShiftSalesPDF($reportData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate shift sales report PDF', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return serverErrorResponse('Failed to generate PDF report', $e->getMessage());
+        }
+    }
+
+    /**
+     * Get shift sales data with time-based filtering
+     */
+    private function getShiftSalesReportData(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get currency information
+        $currencyCode = $request->currency_code ?? $user->business->default_currency ?? 'USD';
+        $currency = Currency::where('code', $currencyCode)->first();
+        $currencySymbol = $currency ? $currency->symbol : '$';
+
+        // Build datetime range
+        $shiftDate = $request->shift_date;
+        $startDateTime = $shiftDate . ' ' . $request->start_time . ':00';
+        $endDateTime = $shiftDate . ' ' . $request->end_time . ':00';
+
+        // Default to current user if no cashier specified
+        $cashierId = $request->cashier_id ?? $user->id;
+        $cashier = \App\Models\User::find($cashierId);
+
+        // Build query
+        $query = Sale::with([
+            'customer',
+            'cashier',
+            'branch',
+            'business',
+            'items.product.category',
+            'salePayments.payment.paymentMethod'
+        ]);
+
+        $businessId = $request->business_id ?? $user->business_id;
+        $branchId = $request->branch_id; // Only filter if explicitly provided
+
+        $query->where('business_id', $businessId);
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        // Filter by cashier only if specified (not "All Cashiers")
+        $cashierIdForFilter = $request->cashier_id;
+        if ($cashierIdForFilter) {
+            $query->where('user_id', $cashierIdForFilter);
+        }
+
+        // Filter by datetime range (shift period)
+        $query->where(function ($q) use ($startDateTime, $endDateTime) {
+            $q->where(function ($sub) use ($startDateTime, $endDateTime) {
+                $sub->whereNotNull('completed_at')
+                    ->where('completed_at', '>=', $startDateTime)
+                    ->where('completed_at', '<=', $endDateTime);
+            })->orWhere(function ($sub) use ($startDateTime, $endDateTime) {
+                $sub->whereNull('completed_at')
+                    ->where('created_at', '>=', $startDateTime)
+                    ->where('created_at', '<=', $endDateTime);
+            });
+        });
+
+        $query->orderBy('completed_at', 'asc');
+        $sales = $query->get();
+
+        // Calculate shift metrics
+        $totalAmount = $sales->sum('total_amount');
+        $creditAmount = $sales->where('payment_type', 'credit')->sum('total_amount');
+
+        // Query expenses from CashMovement (cash_out) for this shift period
+        $expensesQuery = \App\Models\CashMovement::where('business_id', $businessId)
+            ->where('movement_type', 'cash_out')
+            ->where('movement_time', '>=', $startDateTime)
+            ->where('movement_time', '<=', $endDateTime);
+
+        // Filter by cashier if specified
+        if ($cashierIdForFilter) {
+            $expensesQuery->where('processed_by', $cashierIdForFilter);
+        }
+
+        if ($branchId) {
+            $expensesQuery->where('branch_id', $branchId);
+        }
+
+        $totalExpenses = $expensesQuery->sum('amount');
+
+        // Calculate balance: Sales Total - Credit - Expenses
+        $salesBalance = $totalAmount - $creditAmount - $totalExpenses;
+
+        $summary = [
+            'total_transactions' => $sales->count(),
+            'total_amount' => $totalAmount,
+            'credit_amount' => $creditAmount,
+            'expenses' => $totalExpenses,
+            'sales_balance' => $salesBalance,
+            'total_tax' => $sales->sum('tax_amount'),
+            'total_discount' => $sales->sum('discount_amount'),
+            'subtotal' => $sales->sum('subtotal'),
+            'cash_sales_count' => $sales->where('payment_type', 'cash')->count(),
+            'credit_sales_count' => $sales->where('payment_type', 'credit')->count(),
+            'cash_sales_amount' => $sales->where('payment_type', 'cash')->sum('total_amount'),
+            'credit_sales_amount' => $creditAmount,
+            'average_sale' => $sales->count() > 0 ? $totalAmount / $sales->count() : 0,
+            'total_items_sold' => $sales->sum(fn($sale) => $sale->items->sum('quantity')),
+            'completed_sales' => $sales->where('status', 'completed')->count(),
+            'cancelled_sales' => $sales->where('status', 'cancelled')->count(),
+        ];
+
+        // Payment method breakdown
+        $paymentMethods = [];
+        foreach ($sales as $sale) {
+            foreach ($sale->salePayments as $sp) {
+                $method = $sp->payment->paymentMethod->name ?? 'Unknown';
+                if (!isset($paymentMethods[$method])) {
+                    $paymentMethods[$method] = ['count' => 0, 'amount' => 0];
+                }
+                $paymentMethods[$method]['count']++;
+                $paymentMethods[$method]['amount'] += $sp->amount;
+            }
+        }
+
+        // Top products for this shift
+        $productSales = [];
+        foreach ($sales as $sale) {
+            foreach ($sale->items as $item) {
+                $pid = $item->product_id;
+                if (!isset($productSales[$pid])) {
+                    $productSales[$pid] = [
+                        'product' => $item->product,
+                        'quantity' => 0,
+                        'amount' => 0
+                    ];
+                }
+                $productSales[$pid]['quantity'] += $item->quantity;
+                $productSales[$pid]['amount'] += $item->line_total;
+            }
+        }
+        usort($productSales, fn($a, $b) => $b['quantity'] <=> $a['quantity']);
+        $topProducts = array_slice($productSales, 0, 10);
+
+        return [
+            'sales' => $sales,
+            'summary' => $summary,
+            'payment_methods' => $paymentMethods,
+            'top_products' => $topProducts,
+            'currency' => $currencySymbol,
+            'currency_code' => $currencyCode,
+            'shift' => [
+                'date' => $shiftDate,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+            ],
+            'cashier' => $cashier,
+            'business' => $user->business,
+            'branch' => $branchId ? $user->primaryBranch : null,
+            'generated_by' => $user->name,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * Generate shift sales PDF
+     */
+    private function generateShiftSalesPDF($data)
+    {
+        $pdf = new \FPDF('P', 'mm', 'A4');
+        $pdf->SetAutoPageBreak(true, 25);
+        $pdf->AddPage();
+
+        $primary = $this->colors['matisse'];
+        $accent = $this->colors['sun'];
+
+        // HEADER with shift info
+        $this->addShiftReportHeader($pdf, $data, $primary);
+
+        // CASHIER INFO
+        $this->addCashierInfoBox($pdf, $data['cashier'], $data['shift'], $primary);
+
+        // SUMMARY METRICS
+        $this->addShiftSummaryBoxes($pdf, $data['summary'], $data['currency'], $primary, $accent);
+
+        // PAYMENT BREAKDOWN (if any payments)
+        if (!empty($data['payment_methods'])) {
+            $this->addShiftPaymentBreakdown($pdf, $data['payment_methods'], $data['currency'], $primary);
+        }
+
+        // TOP PRODUCTS (compact version)
+        if (!empty($data['top_products'])) {
+            $this->addShiftTopProducts($pdf, $data['top_products'], $data['currency'], $accent);
+        }
+
+        // SALES LIST
+        $this->addShiftSalesTable($pdf, $data['sales'], $data['currency'], $primary);
+
+        // Disable auto page break before adding footer to prevent empty page
+        $pdf->SetAutoPageBreak(false);
+
+        // FOOTER - add to current page
+        $this->addProfessionalFooter($pdf, $data['generated_by'], $data['generated_at'], $data['business'], $data['branch']);
+
+        $filename = 'shift_sales_report_' . $data['shift']['date'] . '_' . str_replace(':', '-', $data['shift']['start_time']) . '.pdf';
+        return response()->stream(
+            fn() => print ($pdf->Output('S')),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"'
+            ]
+        );
+    }
+
+    /**
+     * Shift report header
+     */
+    private function addShiftReportHeader($pdf, $data, $primary)
+    {
+        // Logo centered at top
+        if (file_exists($this->logoPath)) {
+            $pageWidth = $pdf->GetPageWidth();
+            $logoWidth = 35;
+            $logoX = ($pageWidth - $logoWidth) / 2;
+            $pdf->Image($this->logoPath, $logoX, 10, $logoWidth);
+            $pdf->SetY(30);
+        } else {
+            $pdf->SetY(15);
+        }
+
+        $pdf->SetFont('Arial', 'B', 18);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 10, $this->translate('SHIFT SALES REPORT'), 0, 1, 'C');
+        $pdf->Ln(2);
+
+        // Shift date and time
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->SetTextColor(0, 0, 0);
+        $shiftInfo = date('F d, Y', strtotime($data['shift']['date'])) .
+            ' | ' . date('h:i A', strtotime($data['shift']['start_time'])) .
+            ' - ' . date('h:i A', strtotime($data['shift']['end_time']));
+        $pdf->Cell(0, 6, $shiftInfo, 0, 1, 'C');
+
+        $pdf->Ln(6);
+    }
+
+    /**
+     * Cashier info box
+     */
+    private function addCashierInfoBox($pdf, $cashier, $shift, $primary)
+    {
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetDrawColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 10);
+
+        $pdf->Cell(0, 8, '  ' . $this->translate('CASHIER') . ': ' . strtoupper($cashier->name ?? $this->translate('Unknown')), 1, 1, 'L', true);
+
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->Ln(4);
+    }
+
+    /**
+     * Shift summary boxes - compact 2x3 grid
+     */
+    private function addShiftSummaryBoxes($pdf, $summary, $currency, $primary, $accent)
+    {
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 6, $this->translate('SHIFT SUMMARY'), 0, 1);
+        $pdf->Ln(2);
+
+        $boxW = 58;
+        $boxH = 22;
+        $gap = 4;
+        $startX = 12;
+        $y = $pdf->GetY();
+
+        // Row 1: Total Transactions, Sales Total, Credit Amount
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, $this->translate('TOTAL TRANSACTIONS'), number_format($summary['total_transactions']), $primary);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, $boxW, $boxH, $this->translate('SALES TOTAL'), $currency . ' ' . number_format($summary['total_amount'], 2), $accent);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap) * 2, $y, $boxW, $boxH, $this->translate('CREDIT AMOUNT'), $currency . ' ' . number_format($summary['credit_amount'], 2), $this->colors['warning']);
+
+        // Row 2: Expenses, Balance (highlighted)
+        $y += $boxH + $gap;
+        $this->drawMetricBox($pdf, $startX, $y, $boxW, $boxH, $this->translate('EXPENSES'), $currency . ' ' . number_format($summary['expenses'], 2), $this->colors['danger']);
+        $this->drawMetricBox($pdf, $startX + ($boxW + $gap), $y, ($boxW * 2) + $gap, $boxH, $this->translate('BALANCE'), $currency . ' ' . number_format($summary['sales_balance'], 2), $this->colors['success']);
+
+        $pdf->SetY($y + $boxH + 6);
+    }
+
+    /**
+     * Shift payment breakdown - compact
+     */
+    private function addShiftPaymentBreakdown($pdf, $methods, $currency, $primary)
+    {
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 6, $this->translate('PAYMENT METHODS'), 0, 1);
+        $pdf->Ln(1);
+
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 8);
+
+        $pdf->Cell(80, 6, $this->translate('Method'), 1, 0, 'C', true);
+        $pdf->Cell(50, 6, $this->translate('Count'), 1, 0, 'C', true);
+        $pdf->Cell(50, 6, $this->translate('Amount') . ' (' . $currency . ')', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        foreach ($methods as $name => $data) {
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+            $pdf->Cell(80, 5, $name, 1, 0, 'L', $fill);
+            $pdf->Cell(50, 5, number_format($data['count']), 1, 0, 'C', $fill);
+            $pdf->Cell(50, 5, number_format($data['amount'], 2), 1, 1, 'R', $fill);
+            $fill = !$fill;
+        }
+
+        $pdf->Ln(4);
+    }
+
+    /**
+     * Shift top products - compact
+     */
+    private function addShiftTopProducts($pdf, $products, $currency, $accent)
+    {
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->SetTextColor($accent[0], $accent[1], $accent[2]);
+        $pdf->Cell(0, 6, $this->translate('TOP PRODUCTS THIS SHIFT'), 0, 1);
+        $pdf->Ln(1);
+
+        $pdf->SetFillColor($accent[0], $accent[1], $accent[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 8);
+
+        $pdf->Cell(100, 6, $this->translate('Product'), 1, 0, 'C', true);
+        $pdf->Cell(40, 6, $this->translate('Qty'), 1, 0, 'C', true);
+        $pdf->Cell(40, 6, $this->translate('Amount') . ' (' . $currency . ')', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        $count = 0;
+        foreach ($products as $p) {
+            if ($count >= 5)
+                break; // Only top 5 for shift report
+            $productName = $p['product']->name ?? $this->translate('Unknown');
+            if (strlen($productName) > 40) {
+                $productName = substr($productName, 0, 37) . '...';
+            }
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+            $pdf->Cell(100, 5, $productName, 1, 0, 'L', $fill);
+            $pdf->Cell(40, 5, number_format($p['quantity']), 1, 0, 'C', $fill);
+            $pdf->Cell(40, 5, number_format($p['amount'], 2), 1, 1, 'R', $fill);
+            $fill = !$fill;
+            $count++;
+        }
+
+        $pdf->Ln(4);
+    }
+
+    /**
+     * Shift sales table - compact list
+     */
+    private function addShiftSalesTable($pdf, $sales, $currency, $primary)
+    {
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+        $pdf->Cell(0, 6, $this->translate('SALES TRANSACTIONS'), 0, 1);
+        $pdf->Ln(1);
+
+        if ($sales->isEmpty()) {
+            $pdf->SetFont('Arial', 'I', 9);
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(0, 8, $this->translate('No sales transactions during this shift.'), 0, 1, 'C');
+            return;
+        }
+
+        $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('Arial', 'B', 7);
+
+        // Adjusted column widths: Sale# wider (55), Time smaller (22), Customer (45), Items (20), Amount (38)
+        $pdf->Cell(55, 6, $this->translate('Sale #'), 1, 0, 'C', true);
+        $pdf->Cell(22, 6, $this->translate('Time'), 1, 0, 'C', true);
+        $pdf->Cell(45, 6, $this->translate('Customer'), 1, 0, 'C', true);
+        $pdf->Cell(20, 6, $this->translate('Items'), 1, 0, 'C', true);
+        $pdf->Cell(38, 6, $this->translate('Amount') . ' (' . $currency . ')', 1, 1, 'C', true);
+
+        $pdf->SetFont('Arial', '', 7);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $fill = false;
+        foreach ($sales as $sale) {
+            // Check for page break
+            if ($pdf->GetY() > 250) {
+                $pdf->AddPage();
+                $pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('Arial', 'B', 7);
+                $pdf->Cell(55, 6, $this->translate('Sale #'), 1, 0, 'C', true);
+                $pdf->Cell(22, 6, $this->translate('Time'), 1, 0, 'C', true);
+                $pdf->Cell(45, 6, $this->translate('Customer'), 1, 0, 'C', true);
+                $pdf->Cell(20, 6, $this->translate('Items'), 1, 0, 'C', true);
+                $pdf->Cell(38, 6, $this->translate('Amount') . ' (' . $currency . ')', 1, 1, 'C', true);
+                $pdf->SetFont('Arial', '', 7);
+                $pdf->SetTextColor(0, 0, 0);
+            }
+
+            $time = $sale->completed_at ? date('h:i A', strtotime($sale->completed_at)) : date('h:i A', strtotime($sale->created_at));
+            $customer = $sale->customer->name ?? $this->translate('Walk-in');
+            if (strlen($customer) > 18) {
+                $customer = substr($customer, 0, 15) . '...';
+            }
+
+            $pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+            $pdf->Cell(55, 5, $sale->sale_number, 1, 0, 'L', $fill);
+            $pdf->Cell(22, 5, $time, 1, 0, 'C', $fill);
+            $pdf->Cell(45, 5, $customer, 1, 0, 'L', $fill);
+            $pdf->Cell(20, 5, $sale->items->sum('quantity'), 1, 0, 'C', $fill);
+            $pdf->Cell(38, 5, number_format($sale->total_amount, 2), 1, 1, 'R', $fill);
+            $fill = !$fill;
+        }
+
+        $pdf->Ln(4);
+    }
+
 }
+

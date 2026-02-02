@@ -468,6 +468,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::prefix('pdf-reports/sales')->group(function () {
         Route::post('/daily-sales-report', [SalesPdfReportController::class, 'generateDailySalesReport']);
         Route::post('/sales-summary-report', [SalesPdfReportController::class, 'generateSalesSummaryReport']);
+        Route::post('/shift-sales-report', [SalesPdfReportController::class, 'generateShiftSalesReport']);
     });
 
     // PDF REPORTS - STOCK
